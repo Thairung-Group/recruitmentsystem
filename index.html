@@ -863,9 +863,80 @@
     border-radius: 8px;
     flex-wrap: wrap;
   }
+  /* =================== Auto-Save Indicator =================== */
+  #autoSaveIndicator {
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    padding: 5px 13px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+    pointer-events: none;
+    letter-spacing: 0.01em;
+    min-width: 120px;
+    justify-content: center;
+  }
+  .asi-saving { background: rgba(37,99,235,0.13); color: #1d4ed8; border: 1px solid rgba(37,99,235,0.25); }
+  .asi-saved  { background: rgba(22,163,74,0.13);  color: #15803d; border: 1px solid rgba(22,163,74,0.25); }
+  .asi-local  { background: rgba(217,119,6,0.13);  color: #b45309; border: 1px solid rgba(217,119,6,0.25); }
+  .asi-error  { background: rgba(220,38,38,0.13);  color: #b91c1c; border: 1px solid rgba(220,38,38,0.25); }
+  .asi-dot {
+    width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+  }
+  .asi-dot-blue { background: #2563eb; animation: asiPulse 1.1s ease-in-out infinite; }
+  .asi-dot-green { background: #16a34a; }
+  @keyframes asiPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.35;transform:scale(0.75)} }
+  /* Draft conflict dialog */
+  #draftConflictModal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); z-index: 5000;
+    align-items: center; justify-content: center;
+  }
+  #draftConflictModal.open { display: flex; }
+  .dcm-box {
+    background: white; border-radius: 14px; padding: 28px; max-width: 460px; width: 95%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  }
+  .dcm-box h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 10px; color: var(--gray-800); }
+  .dcm-box p  { font-size: 0.88rem; color: var(--gray-600); margin-bottom: 18px; line-height: 1.5; }
+  .dcm-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .dcm-btns button { flex: 1; }
+  /* Draft restore banner */
+  #restoreBanner {
+    display: none; background: linear-gradient(90deg,#1d4ed8,#2563eb);
+    color: white; padding: 10px 20px; border-radius: 10px;
+    margin-bottom: 14px; font-size: 0.875rem; font-weight: 700;
+    align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  #restoreBanner.visible { display: flex; }
 </style>
 </head>
 <body>
+<!-- Auto-save indicator (top-right floating) -->
+<div id="autoSaveIndicator" class="asi-saved" title="สถานะการบันทึกอัตโนมัติ">
+  <span class="asi-dot asi-dot-green"></span> พร้อมใช้งาน
+</div>
+
+<!-- Draft Conflict Modal -->
+<div id="draftConflictModal">
+  <div class="dcm-box">
+    <h3>🔄 พบข้อมูลหลายแหล่ง</h3>
+    <p id="dcmMsg">พบข้อมูล Draft ทั้งจากเครื่องและ Cloud — ต้องการใช้ข้อมูลจากแหล่งไหน?</p>
+    <div class="dcm-btns">
+      <button class="btn btn-primary" id="dcmUseCloud" onclick="resolveDraftConflict('backend')">☁️ ใช้ข้อมูล Cloud (ล่าสุด)</button>
+      <button class="btn btn-secondary" id="dcmUseLocal" onclick="resolveDraftConflict('local')">💾 ใช้ข้อมูลในเครื่อง</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-wrapper">
   <div class="header">
     <h1>🏢 Recruitment Matching System</h1>
@@ -883,6 +954,9 @@
     <button class="tab-btn" onclick="switchTab('summary')">🗂 สรุปสุดท้าย</button>
     <button class="tab-btn" onclick="switchTab('timeline')">📅 Timeline <span id="tlBadge" style="display:none;background:#0891b2;color:white;border-radius:20px;padding:1px 7px;font-size:0.7rem;margin-left:4px;"></span></button>
   </div>
+
+  <!-- Restore Banner (shown when previous session data is found) -->
+  <div id="restoreBanner"></div>
 
   <!-- TAB 1: JD Setup -->
   <div id="tab-setup" class="tab-content active">
@@ -1472,6 +1546,365 @@ if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
+// ==========================================================
+//  PERSISTENCE & AUTO-SAVE SYSTEM  (production-ready)
+//  ✅ localStorage fallback  ✅ Backend API  ✅ Draft system
+//  ✅ Auto-save debounce     ✅ Conflict resolve
+//  ✅ beforeunload warning   ✅ Auto-save indicator
+// ==========================================================
+const RS_STORAGE_KEY = 'recruitmentSystem_v2';
+const RS_SESSION_KEY = 'rs_session_id';
+const API_BASE       = '/api';          // ← เปลี่ยนเป็น URL backend จริง
+
+let _autoSaveTimer    = null;
+let _hasUnsaved       = false;
+let _sessionId        = null;
+let _pendingConflict  = null; // { local, backend } รอ user เลือก
+
+// ─── Session ID ───────────────────────────────────────────
+function getSessionId() {
+  if (_sessionId) return _sessionId;
+  _sessionId = localStorage.getItem(RS_SESSION_KEY);
+  if (!_sessionId) {
+    _sessionId = 'rs_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem(RS_SESSION_KEY, _sessionId);
+  }
+  return _sessionId;
+}
+
+// ─── Serialise / Deserialise (Date-safe) ──────────────────
+function _d2s(d) { return d instanceof Date ? d.toISOString() : d || null; }
+function _s2d(s) { return s ? new Date(s) : null; }
+
+function serializeState() {
+  // Serialize execReviews (Date objects inside)
+  const safeExecReviews = {};
+  for (const [k, arr] of Object.entries(execReviews || {})) {
+    safeExecReviews[k] = arr.map(rev => ({
+      ...rev,
+      openedAt:    _d2s(rev.openedAt),
+      draftSavedAt: _d2s(rev.draftSavedAt),
+      reviewedAt:  _d2s(rev.reviewedAt),
+    }));
+  }
+  // Serialize timelineLogs timestamps
+  const safeLogs = (timelineLogs || []).map(l => ({
+    ...l, timestamp: _d2s(l.timestamp)
+  }));
+  // Skip large binary file data from hrOperationReviews to stay within localStorage limits
+  const safeHrop = {};
+  for (const [k, v] of Object.entries(hrOperationReviews || {})) {
+    safeHrop[k] = {
+      ...v,
+      audioFile:     v.audioFile     ? { fileName: v.audioFile.fileName, fileType: v.audioFile.fileType, _hasData: true } : null,
+      comparisonDoc: v.comparisonDoc ? { fileName: v.comparisonDoc.fileName, fileType: v.comparisonDoc.fileType, _hasData: true } : null,
+    };
+  }
+  return {
+    version: 2,
+    sessionId: getSessionId(),
+    lastSavedAt: new Date().toISOString(),
+    jdData,
+    resumes: (resumes || []).map(r => ({ id: r.id, name: r.name, text: r.text, position: r.position, experience: r.experience })),
+    results: (results || []).map(r => ({ id: r.id, name: r.name, score: r.score, position: r.position, experience: r.experience, matched: r.matched, missing: r.missing, partial: r.partial })),
+    resumeIdCounter,
+    positionsPool: (positionsPool || []).map(p => ({
+      ...p,
+      results: (p.results || []).map(r => ({ id: r.id, name: r.name, score: r.score, position: r.position, experience: r.experience, matched: r.matched, missing: r.missing }))
+    })),
+    positionIdCounter,
+    timestamps: {
+      jdSaved:      _d2s(timestamps.jdSaved),
+      analyzed:     _d2s(timestamps.analyzed),
+      hrSent:       _d2s(timestamps.hrSent),
+      execStarted:  _d2s(timestamps.execStarted),
+      execCompleted: _d2s(timestamps.execCompleted),
+    },
+    hrSelected,
+    execReviews: safeExecReviews,
+    execCandidates,
+    hrOperationReviews: safeHrop,
+    hropCurrentCandId,
+    timelineLogs: safeLogs,
+    timelineLogCounter,
+  };
+}
+
+function deserializeState(s) {
+  try {
+    if (!s || !s.version) return false;
+    jdData            = s.jdData || { title:'', department:'', recruiter:'', recruiterEmail:'', text:'', skills:[] };
+    resumes           = s.resumes || [];
+    results           = s.results || [];
+    resumeIdCounter   = s.resumeIdCounter || 0;
+    positionsPool     = s.positionsPool || [];
+    positionIdCounter = s.positionIdCounter || 0;
+    timestamps = {
+      jdSaved:       _s2d(s.timestamps?.jdSaved),
+      analyzed:      _s2d(s.timestamps?.analyzed),
+      hrSent:        _s2d(s.timestamps?.hrSent),
+      execStarted:   _s2d(s.timestamps?.execStarted),
+      execCompleted: _s2d(s.timestamps?.execCompleted),
+    };
+    hrSelected         = s.hrSelected || {};
+    execCandidates     = s.execCandidates || [];
+    hrOperationReviews = s.hrOperationReviews || {};
+    hropCurrentCandId  = s.hropCurrentCandId  || null;
+    timelineLogCounter = s.timelineLogCounter  || 0;
+    // Restore execReviews with Date objects
+    execReviews = {};
+    for (const [k, arr] of Object.entries(s.execReviews || {})) {
+      execReviews[Number(k)] = arr.map(rev => ({
+        ...rev,
+        openedAt:     _s2d(rev.openedAt),
+        draftSavedAt: _s2d(rev.draftSavedAt),
+        reviewedAt:   _s2d(rev.reviewedAt),
+      }));
+    }
+    // Restore timeline logs
+    timelineLogs = (s.timelineLogs || []).map(l => ({
+      ...l, timestamp: _s2d(l.timestamp) || new Date()
+    }));
+    return true;
+  } catch (e) {
+    console.error('[Persistence] deserializeState error:', e);
+    return false;
+  }
+}
+
+// ─── localStorage ─────────────────────────────────────────
+function saveToLocalStorage() {
+  try {
+    const payload = JSON.stringify(serializeState());
+    // Guard: localStorage อาจเต็ม (~5 MB limit)
+    if (payload.length > 4.5 * 1024 * 1024) {
+      console.warn('[Persistence] State too large for localStorage, skipping');
+      return false;
+    }
+    localStorage.setItem(RS_STORAGE_KEY, payload);
+    return true;
+  } catch (e) {
+    console.warn('[Persistence] localStorage save failed:', e);
+    return false;
+  }
+}
+
+function loadFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(RS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+// ─── Backend API ──────────────────────────────────────────
+async function saveToBackend(status = 'draft') {
+  try {
+    const payload = {
+      id:          getSessionId(),
+      formType:    'RECRUITMENT_SYSTEM',
+      data:        serializeState(),
+      status,
+      lastSavedAt: new Date().toISOString(),
+    };
+    const res = await fetch(`${API_BASE}/draft`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+      signal:  AbortSignal.timeout(5000),
+    });
+    return res.ok;
+  } catch (e) { return false; }
+}
+
+async function loadFromBackend() {
+  try {
+    const res = await fetch(`${API_BASE}/draft/${getSessionId()}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data || null;
+  } catch (e) { return null; }
+}
+
+// ─── Auto-save Indicator UI ───────────────────────────────
+function showSaveIndicator(status, time) {
+  const el = document.getElementById('autoSaveIndicator');
+  if (!el) return;
+  const t = time || new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  const configs = {
+    saving:      { cls: 'asi-saving', html: `<span class="asi-dot asi-dot-blue"></span> กำลังบันทึก...` },
+    saved:       { cls: 'asi-saved',  html: `<span class="asi-dot asi-dot-green"></span> Saved · ${t}` },
+    'saved-local':{ cls: 'asi-local', html: `💾 เครื่อง · ${t}` },
+    error:       { cls: 'asi-error',  html: `⚠️ Save ไม่สำเร็จ (เครื่อง)` },
+    idle:        { cls: 'asi-saved',  html: `<span class="asi-dot asi-dot-green"></span> พร้อมใช้งาน` },
+  };
+  const c = configs[status] || configs.idle;
+  el.className = c.cls;
+  el.innerHTML = c.html;
+}
+
+// ─── Main auto-save trigger (call after every state change) ─
+function triggerAutoSave() {
+  _hasUnsaved = true;
+  showSaveIndicator('saving');
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(async () => {
+    const localOk   = saveToLocalStorage();
+    const backendOk = await saveToBackend('draft');
+    if (backendOk) {
+      showSaveIndicator('saved');
+    } else if (localOk) {
+      showSaveIndicator('saved-local');
+    } else {
+      showSaveIndicator('error');
+    }
+    _hasUnsaved = false;
+  }, 1500); // debounce 1.5 วินาที
+}
+
+// ─── Conflict resolution ──────────────────────────────────
+function resolveDraftConflict(source) {
+  const modal = document.getElementById('draftConflictModal');
+  if (modal) modal.classList.remove('open');
+  if (!_pendingConflict) return;
+  const chosen = source === 'backend' ? _pendingConflict.backend : _pendingConflict.local;
+  _pendingConflict = null;
+  if (chosen && deserializeState(chosen)) {
+    restoreUIFromState();
+    showToast('✅ โหลดข้อมูลจาก ' + (source === 'backend' ? '☁️ Cloud' : '💾 เครื่อง') + ' เรียบร้อย');
+    showSaveIndicator('saved');
+  }
+}
+
+// ─── Restore UI from state (called after deserialize) ────
+function restoreUIFromState() {
+  // Restore JD form fields
+  if (jdData.title) {
+    const el = id => document.getElementById(id);
+    if (el('jobTitle'))       el('jobTitle').value       = jdData.title || '';
+    if (el('jdText'))         el('jdText').value         = jdData.text  || '';
+    if (el('recruiter'))      el('recruiter').value      = jdData.recruiter || '';
+    if (el('recruiterEmail')) el('recruiterEmail').value = jdData.recruiterEmail || '';
+    if (el('requiredSkills') && jdData.skills?.length)
+      el('requiredSkills').value = jdData.skills.join(', ');
+    // Department
+    if (el('departmentType') && jdData.department) {
+      const sel = el('departmentType');
+      let found = false;
+      for (const opt of sel.options) {
+        if (opt.value === jdData.department) { sel.value = jdData.department; found = true; break; }
+      }
+      if (!found && jdData.department) {
+        sel.value = 'OTHER';
+        const other = el('departmentOther');
+        if (other) { other.value = jdData.department; other.style.display = 'block'; }
+      }
+    }
+    // Show JD preview card
+    if (el('jdPreviewCard')) {
+      el('jdPreviewCard').style.display = 'block';
+      if (el('jdTitlePreview')) el('jdTitlePreview').textContent = '💼 ' + jdData.title + (jdData.department ? ' — ' + jdData.department : '');
+      if (el('jdRecruiterPreview')) el('jdRecruiterPreview').textContent = jdData.recruiter ? '👤 Recruiter: ' + jdData.recruiter : '';
+      if (el('jdSkillCount')) el('jdSkillCount').textContent = (jdData.skills?.length || 0) + ' keywords';
+    }
+  }
+  // Re-render all views
+  try { renderResumes(); } catch(e) {}
+  try { renderPoolBadge(); } catch(e) {}
+  try { updateHRCount(); } catch(e) {}
+  try { updateTimelineBadge(); } catch(e) {}
+  if (execCandidates.length) {
+    try { renderHROpReview(); } catch(e) {}
+    try { renderExecReview(); } catch(e) {}
+  }
+  if (results.length) {
+    try { renderResults(); } catch(e) {}
+    const badge = document.getElementById('hrBadge');
+    const cnt = Object.values(hrSelected).filter(v=>v.selected).length;
+    if (badge && cnt > 0) { badge.style.display='inline'; badge.textContent=cnt; }
+  }
+}
+
+// ─── Init on page load ────────────────────────────────────
+async function initPersistence() {
+  const local   = loadFromLocalStorage();
+  let   backend = null;
+  try { backend = await loadFromBackend(); } catch (e) {}
+
+  // Case 1: No saved data anywhere → fresh start
+  if (!local && !backend) return false;
+
+  // Case 2: Only one source
+  const chosen = (local && !backend) ? local : (!local && backend) ? backend : null;
+  if (chosen) {
+    if (deserializeState(chosen)) {
+      restoreUIFromState();
+      const src  = chosen === backend ? '☁️ Cloud' : '💾 เครื่อง';
+      const time = chosen.lastSavedAt ? new Date(chosen.lastSavedAt).toLocaleString('th-TH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      showToast('📂 โหลดข้อมูลที่บันทึกไว้ (' + src + (time ? ' · ' + time : '') + ')');
+      showSaveIndicator('saved', chosen.lastSavedAt ? new Date(chosen.lastSavedAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '');
+    }
+    return true;
+  }
+
+  // Case 3: Both exist → compare timestamps
+  const localTime   = local?.lastSavedAt   ? new Date(local.lastSavedAt)   : new Date(0);
+  const backendTime = backend?.lastSavedAt ? new Date(backend.lastSavedAt) : new Date(0);
+  const diff = Math.abs(localTime - backendTime);
+
+  if (diff < 60000) {
+    // ต่างกันน้อยกว่า 1 นาที → ใช้ล่าสุดเลย
+    const winner = backendTime >= localTime ? backend : local;
+    deserializeState(winner);
+    restoreUIFromState();
+    showToast('📂 โหลดข้อมูลล่าสุดเรียบร้อย');
+    showSaveIndicator('saved');
+  } else {
+    // ต่างกันมาก → ถาม user
+    _pendingConflict = { local, backend };
+    const modal = document.getElementById('draftConflictModal');
+    const msg   = document.getElementById('dcmMsg');
+    if (msg) {
+      const lt = localTime.toLocaleString('th-TH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const bt = backendTime.toLocaleString('th-TH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      msg.textContent = `พบข้อมูลในเครื่อง (${lt}) และ Cloud (${bt}) — ต้องการใช้แหล่งไหน?`;
+      const cloudBtn = document.getElementById('dcmUseCloud');
+      if (cloudBtn) cloudBtn.textContent = `☁️ Cloud (${bt})`;
+      const localBtn = document.getElementById('dcmUseLocal');
+      if (localBtn) localBtn.textContent = `💾 เครื่อง (${lt})`;
+    }
+    if (modal) modal.classList.add('open');
+  }
+  return true;
+}
+
+// ─── beforeunload warning ─────────────────────────────────
+function hasUnsavedData() {
+  const hasJDContent    = !!(jdData?.title || jdData?.text);
+  const hasResumeData   = (resumes || []).some(r => r.name || r.text);
+  const hasDraftReviews = Object.values(execReviews || {}).some(arr =>
+    arr.some(r => r.reviewStatus === 'Draft' || (r.reviewStatus === 'Pending' && r.decision))
+  );
+  return hasJDContent || hasResumeData || hasDraftReviews;
+}
+
+window.addEventListener('beforeunload', (e) => {
+  if (_hasUnsaved || hasUnsavedData()) {
+    e.preventDefault();
+    e.returnValue = 'คุณมีข้อมูลที่ยังไม่ได้ submit ต้องการออกจากหน้านี้หรือไม่?';
+    return e.returnValue;
+  }
+});
+
+// ─── Helper: clear all saved data ─────────────────────────
+function clearSavedDraft() {
+  if (!confirm('ลบข้อมูล Draft ที่บันทึกไว้ทั้งหมดหรือไม่?\nการกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+  localStorage.removeItem(RS_STORAGE_KEY);
+  saveToBackend('cleared').catch(()=>{});
+  showToast('🗑️ ลบ Draft เรียบร้อย');
+}
+
 // =================== State ===================
 let jdData = { title:'', department:'', recruiter:'', recruiterEmail:'', text:'', skills:[] };
 let resumes = [];
@@ -1740,6 +2173,7 @@ function saveJD() {
     statusAfterAction:'JD Ready' });
   updateTimelineBadge();
   showToast('✅ บันทึก JD เรียบร้อย — พบ ' + skills.length + ' keywords');
+  triggerAutoSave(); // ← auto-save after JD saved
 }
 
 function renderPoolBadge() {
@@ -1816,11 +2250,13 @@ function renderResumes() {
 function updateResume(id, field, value) {
   const r = resumes.find(x => x.id === id);
   if (r) r[field] = value;
+  triggerAutoSave(); // ← auto-save on every field change
 }
 
 function removeResume(id) {
   resumes = resumes.filter(x => x.id !== id);
   renderResumes();
+  triggerAutoSave(); // ← auto-save after remove
 }
 
 function clearAllResumes() {
@@ -1977,6 +2413,7 @@ function analyzeAll() {
     renderResults();
     document.getElementById('loadingDiv').style.display = 'none';
     document.getElementById('resultsContent').style.display = 'block';
+    triggerAutoSave(); // ← auto-save after analysis complete
   }, 600);
 }
 
@@ -2527,6 +2964,7 @@ function toggleHRSelect(id) {
     row.querySelector('.hr-check').textContent = hrSelected[id].selected ? '✓' : '';
   }
   updateHRCount();
+  triggerAutoSave(); // ← auto-save HR selection
 }
 
 function updateHRCount() {
@@ -2572,6 +3010,7 @@ function sendToExec() {
     }
   });
   showToast('📋 เลือกแล้ว ' + execCandidates.length + ' คน — กรุณากรอก HR Operation Review ก่อนส่งผู้บริหาร');
+  triggerAutoSave(); // ← auto-save when sending to exec
   switchTab('hroperationreview');
 }
 
@@ -2727,12 +3166,14 @@ function renderHROpForm(candId) {
 function hropUpdateField(candId, field, value) {
   if (!hrOperationReviews[candId]) hrOperationReviews[candId] = { hrComment:'', audioFile:null, comparisonDoc:null, executives:[{name:'',email:''}] };
   hrOperationReviews[candId][field] = value;
+  triggerAutoSave(); // ← auto-save on HR Operation field change
 }
 
 function hropUpdateExec(candId, idx, field, value) {
   if (!hrOperationReviews[candId]) hrOperationReviews[candId] = { hrComment:'', audioFile:null, comparisonDoc:null, executives:[{name:'',email:''}] };
   if (!hrOperationReviews[candId].executives[idx]) hrOperationReviews[candId].executives[idx] = {name:'',email:''};
   hrOperationReviews[candId].executives[idx][field] = value;
+  triggerAutoSave(); // ← auto-save exec info
 }
 
 function hropValidateEmail(candId, idx, inputEl) {
@@ -2889,6 +3330,7 @@ function hropSave(candId) {
     metadata:{ execCount: (data.executives||[]).filter(ex=>ex.name||ex.email).length } });
   updateTimelineBadge();
   showToast('✅ บันทึกข้อมูลสำเร็จ');
+  triggerAutoSave(); // ← auto-save after HR Operation save
   // Auto advance to next unsaved candidate
   const next = execCandidates.find(r => r.id !== candId && !hrOperationReviews[r.id]?._saved);
   if (next) { hropCurrentCandId = next.id; }
@@ -3301,6 +3743,7 @@ function saveExecDraft(candId, execIdx) {
   reRenderExecFormCard(candId);
   renderExecProgress();
   renderHRTrackingView();
+  triggerAutoSave(); // ← auto-save exec draft
   showToast('💾 บันทึก Draft เรียบร้อย — ' + execLabel);
 }
 
@@ -3349,6 +3792,7 @@ function submitExecReview(candId, execIdx) {
   updateStickyBar(cand);
   renderExecProgress();
   renderHRTrackingView();
+  triggerAutoSave(); // ← auto-save exec submit
   showToast('✅ Submit ผลการพิจารณาเรียบร้อย — ' + execLabel + ' : ' + decLabel);
 }
 
@@ -4158,6 +4602,7 @@ function setDecision(candId, execIdx, decision) {
   reRenderExecFormCard(candId);
   renderExecProgress();
   updateTrackingPendingBadge();
+  triggerAutoSave(); // ← auto-save on decision click
 }
 
 // =================== Export Interview Schedule ===================
@@ -4624,13 +5069,36 @@ function exportTimelineCSV() {
 }
 
 // =================== Initialize ===================
-window.addEventListener('load', () => {
-  // Add 2 default resume slots
-  addResumeSlot();
-  addResumeSlot();
-  // Sample JD for quick demo
-  document.getElementById('jobTitle').value = '';
-  showToast('👋 ยินดีต้อนรับ! เริ่มต้นด้วยการกรอก JD แล้วเพิ่ม Resume');
+window.addEventListener('load', async () => {
+  // Try to restore saved state first
+  const restored = await initPersistence();
+
+  if (!restored) {
+    // Fresh start — add default resume slots
+    addResumeSlot();
+    addResumeSlot();
+    showToast('👋 ยินดีต้อนรับ! เริ่มต้นด้วยการกรอก JD แล้วเพิ่ม Resume');
+    showSaveIndicator('idle');
+  } else {
+    // State restored — if no resumes were found add 2 empty slots
+    if (!resumes.length) {
+      addResumeSlot();
+      addResumeSlot();
+    }
+  }
+
+  // Restore banner: show if there was a previous session with data
+  if (restored && (jdData?.title || resumes?.length)) {
+    const banner = document.getElementById('restoreBanner');
+    if (banner) {
+      const lastTime = loadFromLocalStorage()?.lastSavedAt;
+      const t = lastTime ? new Date(lastTime).toLocaleString('th-TH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      banner.innerHTML = `📂 โหลดข้อมูลที่บันทึกไว้ล่าสุด${t?' ('+t+')':''} —
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;margin-left:8px;" onclick="document.getElementById('restoreBanner').style.display='none'">✕ ปิด</button>
+        <button class="btn btn-sm btn-danger" style="margin-left:6px;" onclick="clearSavedDraft();location.reload()">🗑️ ล้างข้อมูล Draft</button>`;
+      banner.classList.add('visible');
+    }
+  }
 });
 </script>
 </body>
