@@ -9,6 +9,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- Firebase Realtime Database (compat v9 — works with window.firebase) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
   :root {
     --primary: #2563eb;
@@ -909,6 +914,88 @@
   .dcm-box p  { font-size: 0.88rem; color: var(--gray-600); margin-bottom: 18px; line-height: 1.5; }
   .dcm-btns { display: flex; gap: 10px; flex-wrap: wrap; }
   .dcm-btns button { flex: 1; }
+  /* =================== Analytics =================== */
+  .analytics-kpi-box {
+    background: white;
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+    border-top: 4px solid var(--primary);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .analytics-kpi-box:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .analytics-kpi-box .akpi-num { font-size: 2rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+  .analytics-kpi-box .akpi-label { font-size: 0.78rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; }
+  .analytics-kpi-box .akpi-sub { font-size: 0.75rem; color: var(--gray-400); margin-top: 4px; }
+  .funnel-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+  }
+  .funnel-label { font-size: 0.82rem; font-weight: 700; color: var(--gray-700); min-width: 160px; }
+  .funnel-bar-wrap { flex: 1; background: var(--gray-100); border-radius: 20px; height: 26px; overflow: hidden; }
+  .funnel-bar { height: 100%; border-radius: 20px; display: flex; align-items: center; padding-left: 12px; font-size: 0.78rem; font-weight: 700; color: white; transition: width 1.2s ease; min-width: 28px; }
+  .funnel-count { font-size: 0.9rem; font-weight: 800; min-width: 36px; text-align: right; }
+  .skill-gap-row { display: flex; align-items: center; gap: 10px; }
+  .skill-gap-name { min-width: 130px; max-width: 130px; font-size: 0.82rem; font-weight: 600; color: var(--gray-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .skill-gap-bar-wrap { flex: 1; background: var(--gray-100); border-radius: 20px; height: 18px; overflow: hidden; }
+  .skill-gap-bar { height: 100%; border-radius: 20px; background: linear-gradient(90deg, #dc2626, #f87171); }
+  .skill-gap-pct { font-size: 0.82rem; font-weight: 800; min-width: 36px; text-align: right; color: #dc2626; }
+  @media (max-width: 768px) {
+    #analyticsChartsRow { grid-template-columns: 1fr !important; }
+  }
+  /* =================== Search Filter in Results =================== */
+  .results-filter-bar {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    background: white; border-radius: var(--radius); padding: 14px 18px;
+    box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .results-filter-bar input, .results-filter-bar select {
+    padding: 8px 12px; border: 2px solid var(--gray-200); border-radius: 8px;
+    font-size: 0.85rem; font-family: inherit; background: white; transition: border-color 0.2s;
+  }
+  .results-filter-bar input:focus, .results-filter-bar select:focus {
+    outline: none; border-color: var(--primary);
+  }
+  /* =================== EmailJS Config Modal =================== */
+  #emailConfigModal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 6000;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  #emailConfigModal.open { display: flex; }
+  .ecm-box {
+    background: white; border-radius: 16px; padding: 30px;
+    max-width: 540px; width: 100%;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+  }
+  .ecm-box h3 { font-size: 1.15rem; font-weight: 800; color: var(--gray-800); margin-bottom: 6px; }
+  .ecm-box p  { font-size: 0.875rem; color: var(--gray-500); margin-bottom: 18px; line-height: 1.5; }
+  .ecm-field  { margin-bottom: 14px; }
+  .ecm-field label { font-size: 0.8rem; font-weight: 700; color: var(--gray-600); margin-bottom: 5px; display: block; }
+  .ecm-field input { width: 100%; padding: 10px 13px; border: 2px solid var(--gray-200); border-radius: 8px; font-size: 0.875rem; font-family: inherit; transition: border-color 0.2s; }
+  .ecm-field input:focus { outline: none; border-color: var(--primary); }
+  .ecm-steps { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; font-size: 0.82rem; color: #0369a1; line-height: 1.7; }
+  .ecm-steps strong { color: #0c4a6e; }
+  .ecm-steps a { color: #0369a1; font-weight: 700; }
+  /* Email Send Status */
+  .email-send-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border-radius: 10px; border: 1.5px solid var(--gray-200);
+    margin-bottom: 8px; background: white;
+    transition: border-color 0.2s;
+  }
+  .email-send-row.es-sending { border-color: #60a5fa; background: #eff6ff; }
+  .email-send-row.es-sent    { border-color: #86efac; background: #f0fdf4; }
+  .email-send-row.es-error   { border-color: #fca5a5; background: #fff1f2; }
+  .email-send-row.es-pending { border-color: var(--gray-200); background: var(--gray-50); }
+  .es-icon  { font-size: 1.3rem; flex-shrink: 0; }
+  .es-info  { flex: 1; min-width: 0; }
+  .es-name  { font-weight: 700; font-size: 0.875rem; color: var(--gray-800); }
+  .es-email { font-size: 0.75rem; color: var(--gray-500); }
+  .es-status { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .es-status.sent    { color: #15803d; }
+  .es-status.sending { color: #1d4ed8; }
+  .es-status.error   { color: #b91c1c; }
+  .es-status.pending { color: var(--gray-400); }
   /* Draft restore banner */
   #restoreBanner {
     display: none; background: linear-gradient(90deg,#1d4ed8,#2563eb);
@@ -924,6 +1011,16 @@
 <div id="autoSaveIndicator" class="asi-saved" title="สถานะการบันทึกอัตโนมัติ">
   <span class="asi-dot asi-dot-green"></span> พร้อมใช้งาน
 </div>
+<!-- EmailJS quick-access button -->
+<div id="emailJsStatusBtn" onclick="openEmailConfig()" title="ตั้งค่า / ตรวจสอบ EmailJS"
+  style="position:fixed;top:50px;right:18px;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:700;z-index:3000;cursor:pointer;backdrop-filter:blur(8px);box-shadow:0 2px 10px rgba(0,0,0,0.18);transition:all 0.3s;background:rgba(3,105,161,0.15);color:#0369a1;border:1px solid rgba(3,105,161,0.3);">
+  📧 ตั้งค่า Email
+</div>
+<!-- Firebase quick-access button -->
+<div id="fbStatusBtn" onclick="openFbConfig()" title="ตั้งค่า Firebase (ฐานข้อมูลร่วม)"
+  style="position:fixed;top:82px;right:18px;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:700;z-index:3000;cursor:pointer;backdrop-filter:blur(8px);box-shadow:0 2px 10px rgba(0,0,0,0.18);transition:all 0.3s;background:rgba(234,88,12,0.12);color:#ea580c;border:1px solid rgba(234,88,12,0.3);">
+  ☁️ ตั้งค่า Firebase
+</div>
 
 <!-- Draft Conflict Modal -->
 <div id="draftConflictModal">
@@ -933,6 +1030,112 @@
     <div class="dcm-btns">
       <button class="btn btn-primary" id="dcmUseCloud" onclick="resolveDraftConflict('backend')">☁️ ใช้ข้อมูล Cloud (ล่าสุด)</button>
       <button class="btn btn-secondary" id="dcmUseLocal" onclick="resolveDraftConflict('local')">💾 ใช้ข้อมูลในเครื่อง</button>
+    </div>
+  </div>
+</div>
+
+<!-- EmailJS Configuration Modal -->
+<div id="emailConfigModal">
+  <div class="ecm-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h3>⚙️ ตั้งค่า EmailJS — ส่ง Email จริง</h3>
+      <button onclick="closeEmailConfig()" style="background:var(--gray-100);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:1rem;">✕</button>
+    </div>
+    <div class="ecm-steps">
+      <strong>วิธีตั้งค่า (ฟรี 200 email/เดือน) — ส่งจาก sujinda.s@thairunggroup.co.th:</strong><br>
+      1. สมัครฟรีที่ <a href="https://www.emailjs.com" target="_blank">emailjs.com</a> (ใช้ email ใดก็ได้สมัคร)<br>
+      2. <strong>Email Services → Add New Service</strong> → เลือก <strong>Outlook / Office 365</strong> → ใส่ sujinda.s@thairunggroup.co.th → Copy <strong>Service ID</strong><br>
+      3. <strong>Email Templates → Create New Template</strong> โดยใส่ตัวแปรต่อไปนี้ในเนื้อหา:<br>
+      &nbsp;&nbsp;<code>{{to_name}}, {{candidate_name}}, {{position}}, {{score}}, {{hr_comment}}, {{message}}</code><br>
+      &nbsp;&nbsp;ตั้งค่า <em>To Email</em> = <code>{{to_email}}</code>, <em>Reply To</em> = <code>{{reply_to}}</code> → Copy <strong>Template ID</strong><br>
+      4. <strong>Account → API Keys</strong> → Copy <strong>Public Key</strong><br>
+      5. กรอกด้านล่างแล้วกด "บันทึก"
+    </div>
+    <div id="ecmTestResult" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.85rem;font-weight:700;"></div>
+    <div class="ecm-field">
+      <label>Service ID <span style="color:#dc2626;">*</span></label>
+      <input type="text" id="ecmServiceId" placeholder="service_xxxxxxx" />
+    </div>
+    <div class="ecm-field">
+      <label>Template ID <span style="color:#dc2626;">*</span></label>
+      <input type="text" id="ecmTemplateId" placeholder="template_xxxxxxx" />
+    </div>
+    <div class="ecm-field">
+      <label>Public Key <span style="color:#dc2626;">*</span></label>
+      <input type="text" id="ecmPublicKey" placeholder="xxxxxxxxxxxxxxxxxxx" />
+    </div>
+    <div class="ecm-field">
+      <label>ชื่อผู้ส่ง (From Name)</label>
+      <input type="text" id="ecmFromName" placeholder="ทีม HR — บริษัทของเรา" />
+    </div>
+    <div class="ecm-field">
+      <label>อีเมลผู้ส่ง (From Email) <span style="color:var(--gray-400);font-weight:400">— ต้องตรงกับ Email ที่เชื่อมใน EmailJS Service</span></label>
+      <input type="email" id="ecmFromEmail" placeholder="sujinda.s@thairunggroup.co.th" value="sujinda.s@thairunggroup.co.th" />
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+      <button class="btn btn-primary" onclick="saveEmailConfig()">💾 บันทึกการตั้งค่า</button>
+      <button class="btn btn-secondary" onclick="testEmailConfig()">🧪 ทดสอบส่ง Email</button>
+      <button class="btn btn-danger btn-sm" onclick="clearEmailConfig()">🗑 ล้างค่า</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase Configuration Modal -->
+<div id="firebaseConfigModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:6000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:white;border-radius:16px;padding:28px;max-width:600px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h3 style="margin:0;font-size:1.1rem;color:var(--gray-800);">☁️ ตั้งค่า Firebase — ฐานข้อมูลร่วม</h3>
+      <button onclick="closeFbConfig()" style="background:var(--gray-100);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:1rem;">✕</button>
+    </div>
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 16px;font-size:0.83rem;color:#9a3412;margin-bottom:16px;line-height:1.7;">
+      <strong>วิธีตั้งค่า Firebase (ฟรี — Spark Plan):</strong><br>
+      1. ไปที่ <a href="https://console.firebase.google.com" target="_blank" style="color:#0369a1;">console.firebase.google.com</a> → <strong>สร้าง Project ใหม่</strong><br>
+      2. เลือก <strong>Realtime Database</strong> → Create Database → เลือก region → <strong>Start in test mode</strong><br>
+      3. คัดลอก <strong>Database URL</strong> (เช่น <code>https://xxxxx-default-rtdb.asia-southeast1.firebasedatabase.app</code>)<br>
+      4. ไปที่ <strong>Project Settings (⚙️)</strong> → <strong>General</strong> → เลื่อนลงถึง "Your apps" → เพิ่ม Web App → Copy <strong>firebaseConfig</strong><br>
+      5. กรอกข้อมูลด้านล่างแล้วกด "บันทึก"
+    </div>
+    <div id="fbTestResult" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.85rem;font-weight:700;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.82rem;font-weight:700;color:var(--gray-700);display:block;margin-bottom:4px;">API Key <span style="color:#dc2626;">*</span></label>
+        <input type="text" id="fbApiKey" placeholder="AIzaSy..." style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:9px;font-size:0.92rem;box-sizing:border-box;" />
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:700;color:var(--gray-700);display:block;margin-bottom:4px;">Project ID <span style="color:#dc2626;">*</span></label>
+        <input type="text" id="fbProjectId" placeholder="my-project-xxxxx" style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:9px;font-size:0.92rem;box-sizing:border-box;" />
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:700;color:var(--gray-700);display:block;margin-bottom:4px;">App ID</label>
+        <input type="text" id="fbAppId" placeholder="1:123456789:web:xxxx" style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:9px;font-size:0.92rem;box-sizing:border-box;" />
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.82rem;font-weight:700;color:var(--gray-700);display:block;margin-bottom:4px;">Database URL <span style="color:#dc2626;">*</span></label>
+        <input type="text" id="fbDatabaseURL" placeholder="https://xxxxx-default-rtdb.asia-southeast1.firebasedatabase.app" style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:9px;font-size:0.92rem;box-sizing:border-box;" />
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveFbConfig()">💾 บันทึกการตั้งค่า</button>
+      <button class="btn btn-secondary" onclick="testFbConnection()">🧪 ทดสอบเชื่อมต่อ</button>
+      <button class="btn btn-danger btn-sm" onclick="clearFbConfig()">🗑 ล้างค่า</button>
+    </div>
+    <div style="margin-top:16px;padding:12px 14px;background:var(--gray-50);border-radius:10px;font-size:0.82rem;color:var(--gray-600);">
+      <strong>🔒 ความปลอดภัย:</strong> ตั้งค่า Realtime Database Rules ใน Firebase Console ให้อนุญาตเฉพาะ path <code>rs_sessions/</code> และจำกัดการเข้าถึงตาม Session ID
+    </div>
+  </div>
+</div>
+
+<!-- Email Send Progress Modal -->
+<div id="emailSendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:6500;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:white;border-radius:16px;padding:28px;max-width:520px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:1.1rem;font-weight:800;color:var(--gray-800);" id="emailSendTitle">📧 กำลังส่ง Email...</div>
+      <button onclick="closeEmailSendModal()" style="background:var(--gray-100);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:1rem;">✕</button>
+    </div>
+    <div id="emailSendList" style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;"></div>
+    <div id="emailSendSummary" style="margin-top:14px;padding:10px 14px;border-radius:8px;font-size:0.875rem;font-weight:700;display:none;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;" id="emailSendActions">
+      <button class="btn btn-secondary" onclick="closeEmailSendModal()">ปิด</button>
     </div>
   </div>
 </div>
@@ -953,6 +1156,7 @@
     <button class="tab-btn" onclick="switchTab('execreview')">👔 ผู้บริหารพิจารณา <span id="execBadge" style="display:none;background:#7c3aed;color:white;border-radius:20px;padding:1px 7px;font-size:0.7rem;margin-left:4px;"></span></button>
     <button class="tab-btn" onclick="switchTab('summary')">🗂 สรุปสุดท้าย</button>
     <button class="tab-btn" onclick="switchTab('timeline')">📅 Timeline <span id="tlBadge" style="display:none;background:#0891b2;color:white;border-radius:20px;padding:1px 7px;font-size:0.7rem;margin-left:4px;"></span></button>
+    <button class="tab-btn" onclick="switchTab('analytics')">📈 Analytics</button>
   </div>
 
   <!-- Restore Banner (shown when previous session data is found) -->
@@ -979,12 +1183,14 @@
         </div>
         <div>
           <label>ผู้รับผิดชอบการสรรหา (Recruiter)</label>
-          <select id="recruiter" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-300);border-radius:10px;font-size:0.95rem;background:#fff;color:var(--gray-700);appearance:auto;" onchange="jdLiveSync()">
+          <select id="recruiter" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-300);border-radius:10px;font-size:0.95rem;background:#fff;color:var(--gray-700);appearance:auto;" onchange="onRecruiterChange()">
             <option value="">-- เลือก Recruiter --</option>
             <option value="ฟลุ๊ค">ฟลุ๊ค</option>
             <option value="จ๋อมแจ๋ม">จ๋อมแจ๋ม</option>
             <option value="พจน์">พจน์</option>
+            <option value="OTHER_RECRUITER">✏️ ระบุเอง...</option>
           </select>
+          <input type="text" id="recruiterCustom" placeholder="ระบุชื่อ Recruiter" style="display:none;margin-top:8px;width:100%;padding:10px 12px;border:1.5px solid var(--gray-300);border-radius:10px;font-size:0.95rem;box-sizing:border-box;" oninput="jdLiveSync()" />
         </div>
         <div>
           <label>อีเมลผู้รับผิดชอบ</label>
@@ -1109,10 +1315,31 @@ Requirements:
         </div>
       </div>
 
+      <!-- Search / Filter Bar -->
+      <div class="results-filter-bar">
+        <span style="font-size:0.875rem;font-weight:700;color:var(--gray-700);white-space:nowrap;">🔍 ค้นหา / กรอง</span>
+        <input type="text" id="resultsSearch" placeholder="ค้นหาชื่อผู้สมัคร..." oninput="filterResults()" style="flex:1;min-width:150px;max-width:240px;" />
+        <select id="resultsScoreFilter" onchange="filterResults()" style="min-width:160px;">
+          <option value="">📊 ทุก Match Score</option>
+          <option value="high">✅ สูง (≥70%)</option>
+          <option value="mid">⚠️ ปานกลาง (40-69%)</option>
+          <option value="low">❌ ต่ำ (&lt;40%)</option>
+        </select>
+        <select id="resultsSortBy" onchange="filterResults()" style="min-width:170px;">
+          <option value="score_desc">🏆 Score มากไปน้อย</option>
+          <option value="score_asc">📈 Score น้อยไปมาก</option>
+          <option value="name_az">👤 ชื่อ A-Z</option>
+          <option value="name_za">👤 ชื่อ Z-A</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="clearResultsFilter()">✕ ล้าง</button>
+        <span id="resultsFilterCount" style="font-size:0.8rem;color:var(--gray-400);white-space:nowrap;margin-left:4px;"></span>
+      </div>
+
       <!-- Export buttons -->
       <div class="action-bar" style="margin-bottom:16px;">
         <button class="btn btn-success" onclick="exportExcel()">📊 Export Excel</button>
         <button class="btn btn-danger" onclick="exportPDF()">📄 Export PDF</button>
+        <button class="btn btn-purple" onclick="switchTab('analytics')">📈 ดู Analytics</button>
       </div>
 
       <!-- Ranking Table -->
@@ -1270,9 +1497,16 @@ Requirements:
             <div style="font-size:0.72rem;opacity:0.8;">บันทึกแล้ว</div>
           </div>
           <button class="btn" style="background:white;color:#0369a1;font-weight:800;" onclick="proceedToExecReview()">📨 ส่งให้ผู้บริหารพิจารณา →</button>
+          <button class="btn" style="background:rgba(255,255,255,0.18);color:white;font-weight:700;border:1.5px solid rgba(255,255,255,0.35);" onclick="openEmailSendPanel()">📧 ส่ง Email ผู้บริหาร</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.12);color:white;font-size:0.78rem;" onclick="openEmailConfig()" title="ตั้งค่า EmailJS">⚙️ ตั้งค่า Email</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.12);color:white;font-size:0.78rem;" onclick="openFbConfig()" title="ตั้งค่า Firebase">☁️ ตั้งค่า Firebase</button>
+          <button class="btn btn-sm" style="background:rgba(255,165,0,0.25);color:#fff;font-size:0.78rem;font-weight:800;" onclick="showAllExecLinks()" title="ดู Links ผู้บริหาร">🔗 Links ผู้บริหาร</button>
         </div>
       </div>
     </div>
+
+    <!-- Email Status Banner -->
+    <div id="hropEmailBanner" style="display:none;margin-bottom:16px;"></div>
 
     <!-- Candidate selector tabs -->
     <div class="card" style="margin-bottom:16px;padding:16px;">
@@ -1387,6 +1621,9 @@ Requirements:
           <span style="font-size:0.8rem;color:var(--gray-400);">ติดตามผลการพิจารณาของผู้บริหารแบบ Real-time</span>
           <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="switchExecView('form')">
             ✏️ ไปที่แบบฟอร์มผู้บริหาร
+          </button>
+          <button class="btn btn-sm" style="background:rgba(234,88,12,0.1);color:#ea580c;border:1px solid rgba(234,88,12,0.3);font-weight:700;" onclick="showAllExecLinks()">
+            🔗 Links ผู้บริหารทั้งหมด
           </button>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
@@ -1523,6 +1760,93 @@ Requirements:
 
     <!-- Pagination -->
     <div id="tlPagination" class="tl-pagination"></div>
+  </div>
+</div>
+
+<!-- TAB 9: Analytics Dashboard -->
+<div id="tab-analytics" class="tab-content">
+  <!-- Header -->
+  <div class="card" style="background:linear-gradient(135deg,#0f172a,#1e3a8a);color:white;padding:22px 26px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:0.75rem;opacity:0.7;text-transform:uppercase;letter-spacing:0.1em;">Recruitment Analytics</div>
+        <div style="font-size:1.5rem;font-weight:900;margin-top:4px;">📈 ภาพรวมการวิเคราะห์การสรรหา</div>
+        <div style="font-size:0.85rem;opacity:0.8;margin-top:2px;">สถิติและกราฟสรุปภาพรวม Recruitment Pipeline</div>
+      </div>
+      <button class="btn" style="background:white;color:#1d4ed8;font-weight:800;" onclick="renderAnalytics()">🔄 รีเฟรช</button>
+    </div>
+  </div>
+
+  <!-- KPI Row -->
+  <div id="analyticsKPI" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:20px;"></div>
+
+  <!-- Charts Row -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;" id="analyticsChartsRow">
+    <!-- Score Distribution -->
+    <div class="card">
+      <div class="card-title">📊 การกระจาย Match Score</div>
+      <div style="position:relative;height:260px;">
+        <canvas id="chartScoreDist"></canvas>
+      </div>
+    </div>
+    <!-- Pipeline Funnel -->
+    <div class="card">
+      <div class="card-title">🔽 Recruitment Funnel</div>
+      <div id="analyticsFunnel" style="padding:8px 0;"></div>
+    </div>
+  </div>
+
+  <!-- Second row -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+    <!-- Skills Gap -->
+    <div class="card">
+      <div class="card-title">❌ Skills ที่ขาดบ่อยที่สุด (Top 10)</div>
+      <div id="analyticsSkillGap" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <!-- Recruiter Performance -->
+    <div class="card">
+      <div class="card-title">👤 ผลงาน Recruiter</div>
+      <div id="analyticsRecruiter" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+  </div>
+
+  <!-- Position Comparison -->
+  <div class="card" id="analyticsPositionCompare" style="margin-bottom:20px;">
+    <div class="card-title">🏆 เปรียบเทียบตำแหน่งงาน</div>
+    <div id="analyticsPositionContent"></div>
+  </div>
+
+  <!-- Email Generator Card -->
+  <div class="card" id="analyticsEmailGen" style="margin-bottom:20px;">
+    <div class="card-title">📧 สร้าง Email แจ้งผลผู้สมัคร</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+      <div style="flex:1;min-width:200px;">
+        <label>เลือกผู้สมัคร</label>
+        <select id="emailCandSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-300);border-radius:8px;font-size:0.9rem;background:white;" onchange="generateEmailTemplate()">
+          <option value="">-- เลือกผู้สมัคร --</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <label>ประเภท Email</label>
+        <select id="emailTypeSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-300);border-radius:8px;font-size:0.9rem;background:white;" onchange="generateEmailTemplate()">
+          <option value="invite">✅ เชิญสัมภาษณ์</option>
+          <option value="reject">❌ แจ้งผลไม่ผ่าน</option>
+          <option value="pending">⏳ รอผลการพิจารณา</option>
+          <option value="offer">🎉 ส่ง Job Offer</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="generateEmailTemplate()">✨ สร้าง Email</button>
+    </div>
+    <div id="emailTemplateOutput" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="margin:0;">📝 Email Draft</label>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="copyEmailToClipboard()">📋 Copy</button>
+          <button class="btn btn-success btn-sm" onclick="downloadEmailDraft()">💾 Download .txt</button>
+        </div>
+      </div>
+      <textarea id="emailTemplateText" style="width:100%;min-height:280px;padding:14px;border:2px solid var(--gray-200);border-radius:10px;font-size:0.875rem;font-family:inherit;line-height:1.6;resize:vertical;" readonly></textarea>
+    </div>
   </div>
 </div>
 
@@ -1771,7 +2095,8 @@ function jdLiveSync() {
   if (title !== undefined) jdData.title = title;
   const dept = getDepartmentValue ? getDepartmentValue() : '';
   if (dept !== undefined) jdData.department = dept;
-  const recruiter = el('recruiter')?.value || '';
+  const recruiterSel = el('recruiter')?.value || '';
+  const recruiter = recruiterSel === 'OTHER_RECRUITER' ? (el('recruiterCustom')?.value.trim() || '') : recruiterSel;
   jdData.recruiter = recruiter;
   const email = el('recruiterEmail')?.value.trim() || '';
   jdData.recruiterEmail = email;
@@ -1998,13 +2323,14 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  const idx = ['setup','resumes','results','hrselect','hroperationreview','execreview','summary','timeline'].indexOf(tab);
+  const idx = ['setup','resumes','results','hrselect','hroperationreview','execreview','summary','timeline','analytics'].indexOf(tab);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (tab === 'summary')           renderSummary();
   if (tab === 'hrselect')          renderHRSelect();
   if (tab === 'hroperationreview') renderHROpReview();
   if (tab === 'execreview')        renderExecReview();
   if (tab === 'timeline')          renderTimeline();
+  if (tab === 'analytics')         renderAnalytics();
 }
 
 // =================== Toast ===================
@@ -2160,7 +2486,7 @@ function saveJD() {
   jdData = {
     title: title,
     department: getDepartmentValue(),
-    recruiter: document.getElementById('recruiter').value,
+    recruiter: (()=>{ const v=document.getElementById('recruiter').value; return v==='OTHER_RECRUITER'?(document.getElementById('recruiterCustom')?.value.trim()||''):v; })(),
     recruiterEmail: document.getElementById('recruiterEmail').value.trim(),
     text: jdText.toLowerCase(),
     skills: skills
@@ -2225,7 +2551,7 @@ function clearJD() {
 function addResumeSlot(name='', text='') {
   resumeIdCounter++;
   const id = resumeIdCounter;
-  resumes.push({ id, name, position: '', experience: '', text, fileName: '' });
+  resumes.push({ id, name, position: '', experience: '', text, fileName: '', contact: '', education: '', salary: '' });
   renderResumes();
 }
 
@@ -2254,6 +2580,18 @@ function renderResumes() {
         <div>
           <label>ประสบการณ์ (ปี)</label>
           <input type="text" value="${r.experience}" placeholder="เช่น 3 ปี" oninput="updateResume(${r.id},'experience',this.value)" />
+        </div>
+        <div>
+          <label>📞 เบอร์โทร / Email</label>
+          <input type="text" value="${r.contact||''}" placeholder="เช่น 081-234-5678 / email@mail.com" oninput="updateResume(${r.id},'contact',this.value)" />
+        </div>
+        <div>
+          <label>🎓 การศึกษา</label>
+          <input type="text" value="${r.education||''}" placeholder="เช่น ปริญญาตรี วิทยาศาสตร์" oninput="updateResume(${r.id},'education',this.value)" />
+        </div>
+        <div>
+          <label>💰 เงินเดือนที่ต้องการ</label>
+          <input type="text" value="${r.salary||''}" placeholder="เช่น 45,000 บาท" oninput="updateResume(${r.id},'salary',this.value)" />
         </div>
       </div>
       <label>เนื้อหา Resume <span style="color:var(--gray-400);font-weight:400">(Paste ข้อความ หรือ Upload ไฟล์)</span></label>
@@ -2767,32 +3105,12 @@ function renderResults() {
   const avg = results.length ? Math.round(results.reduce((a, b) => a + b.score, 0) / results.length) : 0;
   document.getElementById('sumAvg').textContent = avg + '%';
   document.getElementById('resultJobTitle').textContent = jdData.title || 'ไม่ระบุ';
-  const tbody = document.getElementById('rankTableBody');
-  tbody.innerHTML = '';
-  results.forEach((r, idx) => {
-    const rank = idx + 1;
-    const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-    const scoreClass = r.score >= 70 ? 'score-high' : r.score >= 40 ? 'score-mid' : 'score-low';
-    const scoreTextClass = r.score >= 70 ? 'score-high-text' : r.score >= 40 ? 'score-mid-text' : 'score-low-text';
-    const topMatched = r.matched ? r.matched.slice(0, 3).map(s => `<span class="tag tag-match" style="font-size:0.75rem;padding:2px 8px;">${s}</span>`).join('') : '';
-    const topMissing = r.missing ? r.missing.slice(0, 3).map(s => `<span class="tag tag-missing" style="font-size:0.75rem;padding:2px 8px;">${s}</span>`).join('') : '';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><div class="rank-badge ${rankClass}">${rank}</div></td>
-      <td><strong>${r.name || 'ไม่ระบุชื่อ'}</strong>${r.experience ? '<br><small style="color:var(--gray-400);">Exp: ' + r.experience + '</small>' : ''}</td>
-      <td style="color:var(--gray-600)">${r.position || jdData.title || '-'}</td>
-      <td><span class="score-text ${scoreTextClass}">${r.score}%</span></td>
-      <td>
-        <div class="progress-bar-container">
-          <div class="progress-bar ${scoreClass}" style="width:${r.score}%"></div>
-        </div>
-      </td>
-      <td><div class="tag-list">${topMatched}${r.matched && r.matched.length > 3 ? '<span style="color:var(--gray-400);font-size:0.75rem;">+' + (r.matched.length - 3) + ' อื่นๆ</span>' : ''}</div></td>
-      <td><div class="tag-list">${topMissing}${r.missing && r.missing.length > 3 ? '<span style="color:var(--gray-400);font-size:0.75rem;">+' + (r.missing.length - 3) + ' อื่นๆ</span>' : ''}</div></td>
-      <td><button class="btn btn-primary btn-sm" onclick="showDetail(${r.id})">🔍 รายละเอียด</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
+  // Clear filters on fresh render
+  const s = document.getElementById('resultsSearch'); if (s) s.value = '';
+  const f = document.getElementById('resultsScoreFilter'); if (f) f.value = '';
+  const b = document.getElementById('resultsSortBy'); if (b) b.value = 'score_desc';
+  const c = document.getElementById('resultsFilterCount'); if (c) c.textContent = '';
+  renderResultsTable(results);
   timestamps.analyzed = new Date();
   // Also render summary + hr select tabs
   renderSummary();
@@ -2826,6 +3144,9 @@ function showDetail(id) {
         <div style="color:var(--gray-500);margin-top:4px;">🎯 ตำแหน่ง: ${r.position || jdData.title || '-'}</div>
         <div style="color:var(--gray-500);">🏆 อันดับที่ ${rank} จาก ${results.length} คน</div>
         ${r.experience ? `<div style="color:var(--gray-500);">💼 ประสบการณ์: ${r.experience}</div>` : ''}
+        ${r.contact ? `<div style="color:var(--gray-500);">📞 ติดต่อ: ${r.contact}</div>` : ''}
+        ${r.education ? `<div style="color:var(--gray-500);">🎓 การศึกษา: ${r.education}</div>` : ''}
+        ${r.salary ? `<div style="color:var(--gray-500);">💰 เงินเดือน: ${r.salary}</div>` : ''}
         ${r.fileName ? `<div style="color:var(--gray-500);">📎 ไฟล์: ${r.fileName}</div>` : ''}
       </div>
     </div>
@@ -3072,6 +3393,7 @@ function renderHROpReview() {
     hropCurrentCandId = execCandidates[0].id;
   }
   renderHROpForm(hropCurrentCandId);
+  updateHropEmailBanner();
 }
 
 function hropSelectCand(candId) {
@@ -3173,7 +3495,7 @@ function renderHROpForm(candId) {
       </div>
 
       <!-- Dynamic Executive List -->
-      <div>
+      <div style="margin-bottom:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
           <label style="margin:0;">👔 รายชื่อผู้บริหารที่จะรับทราบ / พิจารณาผู้สมัครท่านนี้</label>
           <button class="btn btn-primary btn-sm" onclick="hropAddExec(${candId})">➕ เพิ่มผู้บริหาร</button>
@@ -3181,6 +3503,26 @@ function renderHROpForm(candId) {
         <div id="hropExecList_${candId}" style="display:flex;flex-direction:column;gap:8px;">
           ${execRows}
         </div>
+      </div>
+
+      <!-- Email Actions for this candidate -->
+      <div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:12px;padding:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:0.875rem;font-weight:800;color:#0369a1;">📧 ส่ง Email แจ้งผู้บริหาร</div>
+            <div style="font-size:0.75rem;color:#0891b2;margin-top:2px;">ส่ง email พร้อมข้อมูลผู้สมัครให้แต่ละท่านโดยตรง</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-sm" style="background:#0369a1;color:white;font-weight:700;"
+              onclick="sendEmailsForCandidate(${candId}, 'emailjs')">
+              🚀 ส่ง Email (EmailJS)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="sendEmailsForCandidate(${candId}, 'mailto')">
+              ✉️ เปิด Email Client
+            </button>
+          </div>
+        </div>
+        <div id="hropEmailStatus_${candId}">${buildHropEmailStatusHtml(candId)}</div>
       </div>
     </div>
   `;
@@ -3396,6 +3738,8 @@ function proceedToExecReview() {
       metadata:{ execCount: execs.length } });
   });
   updateTimelineBadge();
+  // ☁️ Push candidates to Firebase + start real-time listener (async, non-blocking)
+  pushAndListenFirebase();
   switchTab('execreview');
 }
 
@@ -4005,10 +4349,16 @@ function buildHRTrackingCard(r) {
         <td>${reviewedAtHtml}</td>
         <td style="max-width:200px;">${commentHtml}</td>
         <td>
-          <button class="btn btn-secondary btn-sm" style="font-size:0.73rem;white-space:nowrap;"
-            onclick="switchExecView('form');setTimeout(()=>{const el=document.getElementById('ecformcard-${r.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},200)">
-            → ดูแบบฟอร์ม
-          </button>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <button class="btn btn-secondary btn-sm" style="font-size:0.73rem;white-space:nowrap;"
+              onclick="switchExecView('form');setTimeout(()=>{const el=document.getElementById('ecformcard-${r.id}');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},200)">
+              → ดูแบบฟอร์ม
+            </button>
+            ${ex.email ? `<button class="btn btn-sm" style="font-size:0.72rem;white-space:nowrap;background:rgba(234,88,12,0.1);color:#ea580c;border:1px solid rgba(234,88,12,0.3);"
+              onclick="copyExecLink(${JSON.stringify(ex.email)},${JSON.stringify(ex.name||'')})">
+              🔗 Copy Link
+            </button>` : ''}
+          </div>
         </td>
       </tr>`;
   }).join('') : `<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--gray-400);">ยังไม่ระบุผู้บริหาร</td></tr>`;
@@ -5091,8 +5441,1173 @@ function exportTimelineCSV() {
   showToast('📄 Export CSV เรียบร้อย!');
 }
 
+// =================== EmailJS Configuration ===================
+const EMAILJS_CONFIG_KEY = 'rs_emailjs_config';
+
+function loadEmailConfig() {
+  try { return JSON.parse(localStorage.getItem(EMAILJS_CONFIG_KEY)) || null; } catch(e) { return null; }
+}
+function saveEmailConfig() {
+  const svcId    = document.getElementById('ecmServiceId')?.value.trim();
+  const tplId    = document.getElementById('ecmTemplateId')?.value.trim();
+  const pubKey   = document.getElementById('ecmPublicKey')?.value.trim();
+  const fromNm   = document.getElementById('ecmFromName')?.value.trim();
+  const fromEmail= document.getElementById('ecmFromEmail')?.value.trim();
+  if (!svcId || !tplId || !pubKey) { showToast('⚠️ กรุณากรอก Service ID, Template ID และ Public Key ให้ครบ'); return; }
+  const cfg = { serviceId: svcId, templateId: tplId, publicKey: pubKey, fromName: fromNm || 'ทีม HR', fromEmail: fromEmail || 'sujinda.s@thairunggroup.co.th' };
+  localStorage.setItem(EMAILJS_CONFIG_KEY, JSON.stringify(cfg));
+  if (window.emailjs) emailjs.init({ publicKey: pubKey });
+  showToast('✅ บันทึกการตั้งค่า EmailJS แล้ว');
+  const res = document.getElementById('ecmTestResult');
+  if (res) { res.style.display = 'block'; res.style.background = '#dcfce7'; res.style.color = '#15803d'; res.textContent = '✅ บันทึกแล้ว — กด "ทดสอบส่ง Email" เพื่อตรวจสอบว่าใช้งานได้'; }
+}
+function clearEmailConfig() {
+  if (!confirm('ลบการตั้งค่า EmailJS ออกจากเครื่องนี้หรือไม่?')) return;
+  localStorage.removeItem(EMAILJS_CONFIG_KEY);
+  ['ecmServiceId','ecmTemplateId','ecmPublicKey','ecmFromName'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  showToast('🗑 ล้างการตั้งค่า EmailJS แล้ว');
+}
+function openEmailConfig() {
+  const cfg = loadEmailConfig();
+  if (cfg) {
+    const s = document.getElementById('ecmServiceId'); if (s) s.value = cfg.serviceId || '';
+    const t = document.getElementById('ecmTemplateId'); if (t) t.value = cfg.templateId || '';
+    const p = document.getElementById('ecmPublicKey'); if (p) p.value = cfg.publicKey || '';
+    const f = document.getElementById('ecmFromName'); if (f) f.value = cfg.fromName || '';
+    const e = document.getElementById('ecmFromEmail'); if (e) e.value = cfg.fromEmail || 'sujinda.s@thairunggroup.co.th';
+  }
+  document.getElementById('emailConfigModal').classList.add('open');
+}
+function closeEmailConfig() { document.getElementById('emailConfigModal').classList.remove('open'); }
+
+async function testEmailConfig() {
+  const cfg = loadEmailConfig();
+  const res = document.getElementById('ecmTestResult');
+  if (!cfg) { if (res) { res.style.display='block'; res.style.background='#fff1f2'; res.style.color='#b91c1c'; res.textContent='⚠️ กรุณาบันทึกการตั้งค่าก่อน'; } return; }
+  if (res) { res.style.display='block'; res.style.background='#eff6ff'; res.style.color='#1d4ed8'; res.textContent='🔄 กำลังทดสอบ...'; }
+  if (!window.emailjs) { if (res) { res.textContent='❌ EmailJS SDK ยังไม่โหลด กรุณารีเฟรชหน้า'; } return; }
+  try {
+    emailjs.init({ publicKey: cfg.publicKey });
+    // Send a test email to the recruiter email (if exists) or use a dummy
+    const toEmail = jdData.recruiterEmail || cfg.fromEmail || 'sujinda.s@thairunggroup.co.th';
+    await emailjs.send(cfg.serviceId, cfg.templateId, {
+      to_email:    toEmail,
+      to_name:     jdData.recruiter || 'ทีม HR',
+      from_name:   cfg.fromName || 'ทีม HR',
+      from_email:  cfg.fromEmail || 'sujinda.s@thairunggroup.co.th',
+      reply_to:    cfg.fromEmail || 'sujinda.s@thairunggroup.co.th',
+      subject:     '🧪 ทดสอบ EmailJS — Recruitment System',
+      candidate_name: 'TEST CANDIDATE',
+      position:    'TEST POSITION',
+      score:       '100%',
+      hr_comment:  'นี่คือ email ทดสอบจาก Recruitment Matching System',
+      department:  jdData.department || '-',
+      recruiter:   jdData.recruiter || '-',
+      message:     'ทดสอบการส่ง email จาก Recruitment System เรียบร้อย ✅',
+    });
+    if (res) { res.style.background='#dcfce7'; res.style.color='#15803d'; res.textContent='✅ ส่ง Email ทดสอบไปยัง ' + toEmail + ' เรียบร้อย! ตรวจสอบกล่องจดหมาย'; }
+    showToast('✅ ทดสอบ EmailJS สำเร็จ!');
+  } catch(e) {
+    if (res) { res.style.background='#fff1f2'; res.style.color='#b91c1c'; res.textContent='❌ ส่งไม่สำเร็จ: ' + (e?.text || e?.message || JSON.stringify(e)); }
+    showToast('❌ EmailJS ส่งไม่ได้: ' + (e?.text || e?.message || e));
+  }
+}
+
+// Build HTML for email status per candidate
+function buildHropEmailStatusHtml(candId) {
+  const emailStatusMap = hrOperationReviews[candId]?.emailStatus || {};
+  const executives = (hrOperationReviews[candId]?.executives || []).filter(ex => ex.name || ex.email);
+  if (!executives.length) return '<div style="font-size:0.78rem;color:#64748b;">เพิ่มรายชื่อผู้บริหาร (และอีเมล) ด้านบนก่อน จึงจะส่ง email ได้</div>';
+  return executives.map(ex => {
+    const st = emailStatusMap[ex.email] || 'not_sent';
+    const stLabel = st === 'sent' ? '✅ ส่งแล้ว' : st === 'error' ? '❌ ส่งไม่สำเร็จ' : '⏳ ยังไม่ส่ง';
+    const stColor = st === 'sent' ? '#15803d' : st === 'error' ? '#b91c1c' : '#64748b';
+    const sentAt  = emailStatusMap[ex.email + '_sentAt'] ? ' · ' + emailStatusMap[ex.email + '_sentAt'] : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #e0f2fe;">
+      <span style="font-size:0.85rem;font-weight:700;color:var(--gray-700);flex:1;">${ex.name||'ไม่ระบุชื่อ'}${ex.email?' <span style="color:var(--gray-400);font-size:0.75rem;">('+ex.email+')</span>':' <span style="color:#f59e0b;font-size:0.72rem;">⚠️ ยังไม่มี email</span>'}</span>
+      <span style="font-size:0.75rem;font-weight:700;color:${stColor};">${stLabel}${sentAt}</span>
+    </div>`;
+  }).join('');
+}
+
+function refreshHropEmailStatus(candId) {
+  const el = document.getElementById('hropEmailStatus_' + candId);
+  if (el) el.innerHTML = buildHropEmailStatusHtml(candId);
+  // Also update the banner
+  updateHropEmailBanner();
+}
+
+function updateHropEmailBanner() {
+  const bannerEl = document.getElementById('hropEmailBanner');
+  if (!bannerEl || !execCandidates.length) return;
+  let totalExecs = 0, sentCount = 0, pendingExecs = 0;
+  execCandidates.forEach(cand => {
+    const hrop = hrOperationReviews[cand.id] || {};
+    const execs = (hrop.executives||[]).filter(ex => ex.email);
+    execs.forEach(ex => {
+      totalExecs++;
+      const st = hrop.emailStatus?.[ex.email];
+      if (st === 'sent') sentCount++;
+      else pendingExecs++;
+    });
+  });
+  if (!totalExecs) { bannerEl.style.display = 'none'; return; }
+  const allSent = sentCount === totalExecs;
+  bannerEl.style.display = 'block';
+  bannerEl.innerHTML = `
+    <div style="background:${allSent?'#f0fdf4':'#eff6ff'};border:1.5px solid ${allSent?'#86efac':'#bae6fd'};border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.3rem;">${allSent?'✅':'📧'}</span>
+        <div>
+          <div style="font-weight:800;font-size:0.875rem;color:${allSent?'#15803d':'#0369a1'};">
+            ${allSent ? 'ส่ง Email ครบทุกท่านแล้ว' : `ส่ง Email แล้ว ${sentCount} / ${totalExecs} ท่าน`}
+          </div>
+          <div style="font-size:0.75rem;color:var(--gray-500);margin-top:1px;">
+            ${pendingExecs ? `ยังรอส่ง ${pendingExecs} ท่าน` : 'ครบทุกท่านแล้ว'}
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-sm" style="background:#0369a1;color:white;font-weight:700;" onclick="openEmailSendPanel()">
+        📧 จัดการส่ง Email
+      </button>
+    </div>`;
+}
+
+// =================== Send Emails to Executives ===================
+async function sendEmailsForCandidate(candId, method) {
+  const cand = execCandidates.find(r => r.id === candId);
+  if (!cand) { showToast('⚠️ ไม่พบข้อมูลผู้สมัคร'); return; }
+  const hrop = hrOperationReviews[candId] || {};
+  const executives = (hrop.executives || []).filter(ex => ex.email);
+  if (!executives.length) {
+    showToast('⚠️ ยังไม่มีอีเมลผู้บริหาร — กรุณากรอกอีเมลของผู้บริหารในฟอร์มก่อน');
+    return;
+  }
+  if (method === 'mailto') {
+    sendViaMailto(cand, hrop, executives);
+  } else {
+    await sendViaEmailJS(cand, hrop, executives, candId);
+  }
+}
+
+function buildEmailContent(cand, hrop, ex) {
+  const position   = cand.position || jdData.title || 'ไม่ระบุ';
+  const dept       = jdData.department || '-';
+  const recruiter  = jdData.recruiter  || 'ทีม HR';
+  const score      = cand.score + '%';
+  const hrComment  = hrop.hrComment || '—';
+  const matched    = (cand.matched||[]).slice(0,8).join(', ') || '—';
+  const missing    = (cand.missing||[]).slice(0,5).join(', ') || '—';
+  const today      = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  const candId     = 'C' + String(cand.id).padStart(3,'0');
+  const cfg = loadEmailConfig();
+  return {
+    to_email:       ex.email,
+    to_name:        ex.name || 'ผู้บริหาร',
+    from_name:      cfg?.fromName || recruiter,
+    from_email:     cfg?.fromEmail || 'sujinda.s@thairunggroup.co.th',
+    reply_to:       cfg?.fromEmail || jdData.recruiterEmail || 'sujinda.s@thairunggroup.co.th',
+    subject:        `[Recruitment] ขอความกรุณาพิจารณาผู้สมัคร — ${cand.name||'ผู้สมัคร'} (${position})`,
+    candidate_name: cand.name || 'ไม่ระบุ',
+    candidate_id:   candId,
+    position,
+    department:     dept,
+    recruiter,
+    score,
+    hr_comment:     hrComment,
+    matched_skills: matched,
+    missing_skills: missing,
+    education:      cand.education || '—',
+    experience:     cand.experience || '—',
+    contact:        cand.contact || '—',
+    salary:         cand.salary || '—',
+    date:           today,
+    message:
+`เรียน คุณ${ex.name||'ผู้บริหาร'}
+
+HR ขอส่งข้อมูลผู้สมัครเพื่อขอรับความเห็น / มติจากท่าน
+
+ข้อมูลผู้สมัคร
+━━━━━━━━━━━━━━━━━━━━━
+ชื่อ-นามสกุล   : ${cand.name||'ไม่ระบุ'} (${candId})
+ตำแหน่ง        : ${position}
+แผนก           : ${dept}
+ประสบการณ์     : ${cand.experience||'—'}
+การศึกษา       : ${cand.education||'—'}
+เงินเดือนที่ต้องการ: ${cand.salary||'—'}
+ข้อมูลติดต่อ   : ${cand.contact||'—'}
+
+ผล AI Matching
+━━━━━━━━━━━━━━━━━━━━━
+Match Score    : ${score}
+Skills ที่ Match: ${matched}
+Skills ที่ขาด  : ${missing}
+
+ความเห็น HR
+━━━━━━━━━━━━━━━━━━━━━
+${hrComment}
+
+กรุณาแจ้งมติของท่านกลับมายัง ${recruiter} ภายใน 3 วันทำการ
+
+ขอแสดงความนับถือ
+${recruiter} | ${jdData.recruiterEmail||''}
+วันที่: ${today}`,
+  };
+}
+
+async function sendViaEmailJS(cand, hrop, executives, candId) {
+  const cfg = loadEmailConfig();
+  if (!cfg || !cfg.serviceId || !cfg.templateId || !cfg.publicKey) {
+    const goConfig = confirm('ยังไม่ได้ตั้งค่า EmailJS\n\nต้องการตั้งค่าตอนนี้หรือไม่?\n(หากไม่ต้องการ กด Cancel จะเปิด Email Client แทน)');
+    if (goConfig) openEmailConfig();
+    else sendViaMailto(cand, hrop, executives);
+    return;
+  }
+  if (!window.emailjs) { showToast('⚠️ EmailJS SDK ยังไม่โหลด — ลองรีเฟรชหน้า'); return; }
+  emailjs.init({ publicKey: cfg.publicKey });
+
+  // Show progress modal
+  const modal = document.getElementById('emailSendModal');
+  const titleEl = document.getElementById('emailSendTitle');
+  const listEl  = document.getElementById('emailSendList');
+  const summEl  = document.getElementById('emailSendSummary');
+  if (titleEl) titleEl.textContent = `📧 ส่ง Email ให้ผู้บริหาร — ${cand.name||'ผู้สมัคร'}`;
+  if (summEl) summEl.style.display = 'none';
+
+  // Build initial row UI
+  const rows = executives.map((ex, i) => ({ ex, status: 'pending', id: `esrow_${i}` }));
+  if (listEl) {
+    listEl.innerHTML = rows.map(row => `
+      <div id="${row.id}" class="email-send-row es-pending">
+        <div class="es-icon">✉️</div>
+        <div class="es-info">
+          <div class="es-name">${row.ex.name||'ไม่ระบุชื่อ'}</div>
+          <div class="es-email">${row.ex.email}</div>
+        </div>
+        <div class="es-status pending" id="${row.id}_status">⏳ รอส่ง</div>
+      </div>`).join('');
+  }
+  if (modal) modal.style.display = 'flex';
+
+  let sentCount = 0, errorCount = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowEl = document.getElementById(row.id);
+    const statusEl = document.getElementById(row.id + '_status');
+    if (rowEl) rowEl.className = 'email-send-row es-sending';
+    if (statusEl) { statusEl.className = 'es-status sending'; statusEl.textContent = '🔄 กำลังส่ง...'; }
+    const params = buildEmailContent(cand, hrop, row.ex);
+    try {
+      await emailjs.send(cfg.serviceId, cfg.templateId, params);
+      if (rowEl) rowEl.className = 'email-send-row es-sent';
+      if (statusEl) { statusEl.className = 'es-status sent'; statusEl.textContent = '✅ ส่งแล้ว'; }
+      // Track status
+      if (!hrOperationReviews[candId]) hrOperationReviews[candId] = { hrComment:'', audioFile:null, comparisonDoc:null, executives:[] };
+      if (!hrOperationReviews[candId].emailStatus) hrOperationReviews[candId].emailStatus = {};
+      hrOperationReviews[candId].emailStatus[row.ex.email] = 'sent';
+      hrOperationReviews[candId].emailStatus[row.ex.email + '_sentAt'] = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+      sentCount++;
+    } catch(e) {
+      if (rowEl) rowEl.className = 'email-send-row es-error';
+      if (statusEl) { statusEl.className = 'es-status error'; statusEl.textContent = '❌ ล้มเหลว: ' + (e?.text||e?.message||'Error'); }
+      if (!hrOperationReviews[candId].emailStatus) hrOperationReviews[candId].emailStatus = {};
+      hrOperationReviews[candId].emailStatus[row.ex.email] = 'error';
+      errorCount++;
+    }
+    await new Promise(r => setTimeout(r, 500)); // brief pause between sends
+  }
+
+  // Summary
+  if (summEl) {
+    summEl.style.display = 'block';
+    summEl.style.background = errorCount === 0 ? '#dcfce7' : sentCount === 0 ? '#fff1f2' : '#fef9c3';
+    summEl.style.color = errorCount === 0 ? '#15803d' : sentCount === 0 ? '#b91c1c' : '#854d0e';
+    summEl.textContent = errorCount === 0
+      ? `✅ ส่งสำเร็จทั้งหมด ${sentCount} ท่าน`
+      : `ส่งสำเร็จ ${sentCount} / ${executives.length} ท่าน · ล้มเหลว ${errorCount} ท่าน`;
+  }
+  if (titleEl) titleEl.textContent = `📧 ผลการส่ง Email — ${cand.name||'ผู้สมัคร'}`;
+
+  // Log
+  logEvent({ candidateId:'C'+String(candId).padStart(3,'0'), candidateName: cand.name||'ไม่ระบุ',
+    position: cand.position||jdData.title||'', department: jdData.department||'',
+    stage:'HR Operation Review', action:`ส่ง Email ผู้บริหาร (EmailJS) — สำเร็จ ${sentCount}/${executives.length}`,
+    performedBy: jdData.recruiter||'HR', role:'Recruiter',
+    details: executives.map(ex => (hrOperationReviews[candId]?.emailStatus?.[ex.email]==='sent'?'✅':'❌')+' '+ex.name+' <'+ex.email+'>').join(' | '),
+    statusAfterAction: sentCount === executives.length ? 'Email Sent' : 'Email Partial' });
+  updateTimelineBadge();
+  refreshHropEmailStatus(candId);
+  triggerAutoSave();
+  showToast(sentCount > 0 ? `📧 ส่ง Email สำเร็จ ${sentCount}/${executives.length} ท่าน` : '❌ ส่ง Email ไม่สำเร็จ — ตรวจสอบการตั้งค่า');
+}
+
+function sendViaMailto(cand, hrop, executives) {
+  if (!executives.length) { showToast('⚠️ ไม่มีอีเมลผู้บริหาร'); return; }
+  executives.forEach((ex, i) => {
+    const params = buildEmailContent(cand, hrop, ex);
+    const subject = encodeURIComponent(params.subject);
+    const body    = encodeURIComponent(params.message);
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = `mailto:${ex.email}?subject=${subject}&body=${body}`;
+      a.click();
+    }, i * 800); // stagger to avoid browser blocking
+  });
+  showToast(`✉️ เปิด Email Client สำหรับ ${executives.length} ท่าน (อาจมีหน้าต่างป๊อปอัพ)`);
+}
+
+function openEmailSendPanel() {
+  // Show a quick overview of all candidates & their exec email status
+  if (!execCandidates.length) { showToast('⚠️ ยังไม่มีผู้สมัครที่ HR ส่งมา'); return; }
+  const modal = document.getElementById('emailSendModal');
+  const titleEl = document.getElementById('emailSendTitle');
+  const listEl  = document.getElementById('emailSendList');
+  const summEl  = document.getElementById('emailSendSummary');
+  const actEl   = document.getElementById('emailSendActions');
+  if (titleEl) titleEl.textContent = '📧 ส่ง Email ผู้บริหาร — ภาพรวม';
+  if (summEl)  summEl.style.display = 'none';
+  if (listEl) {
+    listEl.innerHTML = execCandidates.map(cand => {
+      const hrop = hrOperationReviews[cand.id] || {};
+      const execs = (hrop.executives||[]).filter(ex => ex.email);
+      const noEmail = (hrop.executives||[]).filter(ex => ex.name && !ex.email);
+      const sentCount = execs.filter(ex => hrop.emailStatus?.[ex.email]==='sent').length;
+      return `<div style="padding:12px;border:1.5px solid var(--gray-200);border-radius:10px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div style="font-weight:800;color:var(--gray-800);">${cand.name||'ไม่ระบุ'}</div>
+            <div style="font-size:0.75rem;color:var(--gray-500);">${cand.position||jdData.title||'-'} · ${cand.score}%</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${execs.length ? `
+              <button class="btn btn-sm" style="background:#0369a1;color:white;font-weight:700;" onclick="sendEmailsForCandidate(${cand.id},'emailjs');closeEmailSendModal();">
+                🚀 EmailJS (${execs.length} ท่าน)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="sendEmailsForCandidate(${cand.id},'mailto');closeEmailSendModal();">✉️ Mailto</button>` :
+            `<span style="font-size:0.75rem;color:#f59e0b;font-weight:700;">⚠️ ยังไม่มีอีเมลผู้บริหาร</span>`}
+          </div>
+        </div>
+        ${execs.length ? `<div style="font-size:0.75rem;margin-top:8px;color:var(--gray-500);">
+          ส่งแล้ว: <strong style="color:#16a34a;">${sentCount}</strong> / ${execs.length} ท่าน
+          ${noEmail.length ? ` · <span style="color:#f59e0b;">ไม่มีอีเมล: ${noEmail.map(x=>x.name).join(', ')}</span>` : ''}
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  }
+  if (actEl) actEl.innerHTML = `
+    <button class="btn btn-primary" onclick="sendAllCandidateEmails('emailjs')">🚀 ส่ง EmailJS ทุกคน</button>
+    <button class="btn btn-secondary" onclick="sendAllCandidateEmails('mailto')">✉️ Mailto ทุกคน</button>
+    <button class="btn btn-secondary" onclick="closeEmailSendModal()">ปิด</button>
+    <button class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-600);" onclick="closeEmailSendModal();openEmailConfig()">⚙️ ตั้งค่า EmailJS</button>`;
+  if (modal) modal.style.display = 'flex';
+}
+
+async function sendAllCandidateEmails(method) {
+  closeEmailSendModal();
+  for (const cand of execCandidates) {
+    const hrop = hrOperationReviews[cand.id] || {};
+    const execs = (hrop.executives||[]).filter(ex => ex.email);
+    if (!execs.length) continue;
+    if (method === 'mailto') sendViaMailto(cand, hrop, execs);
+    else await sendViaEmailJS(cand, hrop, execs, cand.id);
+  }
+}
+
+function closeEmailSendModal() {
+  const modal = document.getElementById('emailSendModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// =================== Recruiter Custom Input ===================
+function onRecruiterChange() {
+  const sel = document.getElementById('recruiter').value;
+  const customInput = document.getElementById('recruiterCustom');
+  if (sel === 'OTHER_RECRUITER') {
+    customInput.style.display = 'block';
+    customInput.focus();
+  } else {
+    customInput.style.display = 'none';
+    customInput.value = '';
+  }
+  jdLiveSync();
+}
+
+// Override getDepartmentValue to also handle recruiter custom
+const _origGetRecruiterVal = () => {
+  const sel = document.getElementById('recruiter')?.value;
+  if (sel === 'OTHER_RECRUITER') {
+    return document.getElementById('recruiterCustom')?.value.trim() || '';
+  }
+  return sel || '';
+};
+
+// =================== Results Search/Filter ===================
+let _filteredResults = [];
+function filterResults() {
+  const search = (document.getElementById('resultsSearch')?.value || '').toLowerCase().trim();
+  const scoreFilter = document.getElementById('resultsScoreFilter')?.value || '';
+  const sortBy = document.getElementById('resultsSortBy')?.value || 'score_desc';
+  let filtered = [...results];
+  if (search) filtered = filtered.filter(r => (r.name||'').toLowerCase().includes(search) || (r.position||'').toLowerCase().includes(search));
+  if (scoreFilter === 'high') filtered = filtered.filter(r => r.score >= 70);
+  else if (scoreFilter === 'mid') filtered = filtered.filter(r => r.score >= 40 && r.score < 70);
+  else if (scoreFilter === 'low') filtered = filtered.filter(r => r.score < 40);
+  if (sortBy === 'score_desc') filtered.sort((a,b) => b.score - a.score);
+  else if (sortBy === 'score_asc') filtered.sort((a,b) => a.score - b.score);
+  else if (sortBy === 'name_az') filtered.sort((a,b) => (a.name||'').localeCompare(b.name||'', 'th'));
+  else if (sortBy === 'name_za') filtered.sort((a,b) => (b.name||'').localeCompare(a.name||'', 'th'));
+  _filteredResults = filtered;
+  const cntEl = document.getElementById('resultsFilterCount');
+  if (cntEl) cntEl.textContent = filtered.length < results.length ? `แสดง ${filtered.length} / ${results.length} คน` : '';
+  renderResultsTable(filtered);
+}
+
+function clearResultsFilter() {
+  const s = document.getElementById('resultsSearch'); if (s) s.value = '';
+  const f = document.getElementById('resultsScoreFilter'); if (f) f.value = '';
+  const b = document.getElementById('resultsSortBy'); if (b) b.value = 'score_desc';
+  filterResults();
+}
+
+function renderResultsTable(data) {
+  const tbody = document.getElementById('rankTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray-400);">ไม่พบผู้สมัครที่ตรงกับเงื่อนไข</td></tr>';
+    return;
+  }
+  data.forEach((r, idx) => {
+    const rank = results.findIndex(x => x.id === r.id) + 1;
+    const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+    const scoreClass = r.score >= 70 ? 'score-high' : r.score >= 40 ? 'score-mid' : 'score-low';
+    const scoreTextClass = r.score >= 70 ? 'score-high-text' : r.score >= 40 ? 'score-mid-text' : 'score-low-text';
+    const topMatched = r.matched ? r.matched.slice(0, 3).map(s => `<span class="tag tag-match" style="font-size:0.75rem;padding:2px 8px;">${s}</span>`).join('') : '';
+    const topMissing = r.missing ? r.missing.slice(0, 3).map(s => `<span class="tag tag-missing" style="font-size:0.75rem;padding:2px 8px;">${s}</span>`).join('') : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="rank-badge ${rankClass}">${rank}</div></td>
+      <td><strong>${r.name || 'ไม่ระบุชื่อ'}</strong>${r.experience ? '<br><small style="color:var(--gray-400);">Exp: ' + r.experience + '</small>' : ''}${r.contact ? '<br><small style="color:var(--gray-400);">📞 ' + r.contact + '</small>' : ''}</td>
+      <td style="color:var(--gray-600)">${r.position || jdData.title || '-'}${r.education ? '<br><small style="color:var(--gray-400);">🎓 ' + r.education + '</small>' : ''}</td>
+      <td><span class="score-text ${scoreTextClass}">${r.score}%</span></td>
+      <td>
+        <div class="progress-bar-container">
+          <div class="progress-bar ${scoreClass}" style="width:${r.score}%"></div>
+        </div>
+      </td>
+      <td><div class="tag-list">${topMatched}${r.matched && r.matched.length > 3 ? '<span style="color:var(--gray-400);font-size:0.75rem;">+' + (r.matched.length - 3) + ' อื่นๆ</span>' : ''}</div></td>
+      <td><div class="tag-list">${topMissing}${r.missing && r.missing.length > 3 ? '<span style="color:var(--gray-400);font-size:0.75rem;">+' + (r.missing.length - 3) + ' อื่นๆ</span>' : ''}</div></td>
+      <td><button class="btn btn-primary btn-sm" onclick="showDetail(${r.id})">🔍 รายละเอียด</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// =================== Analytics Dashboard ===================
+let _analyticsChart = null;
+
+function renderAnalytics() {
+  // Populate email candidate selector
+  const candSel = document.getElementById('emailCandSelect');
+  if (candSel) {
+    candSel.innerHTML = '<option value="">-- เลือกผู้สมัคร --</option>';
+    const pool = results.length ? results : execCandidates;
+    pool.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = (r.name || 'ไม่ระบุ') + (r.score ? ' (' + r.score + '%)' : '');
+      candSel.appendChild(opt);
+    });
+  }
+
+  // KPI boxes
+  const kpiEl = document.getElementById('analyticsKPI');
+  if (!kpiEl) return;
+  const totalResume = results.length;
+  const highMatch = results.filter(r => r.score >= 70).length;
+  const midMatch  = results.filter(r => r.score >= 40 && r.score < 70).length;
+  const lowMatch  = results.filter(r => r.score < 40).length;
+  const avgScore  = totalResume ? Math.round(results.reduce((a,r) => a + r.score, 0) / totalResume) : 0;
+  const hrSentCount = execCandidates.length;
+  const approvedCount = execCandidates.filter(r => {
+    const revs = (execReviews[r.id] || []).filter(v => v.reviewStatus === 'Submitted' || v.decision);
+    return revs.filter(v => v.decision === 'pass').length > revs.filter(v => v.decision !== 'pass').length;
+  }).length;
+  const positions = positionsPool.length;
+
+  kpiEl.innerHTML = [
+    { num: positions, label: 'ตำแหน่งงาน', sub: 'ที่เปิดรับ', color: '#2563eb', bg: '#eff6ff' },
+    { num: totalResume, label: 'Resume ทั้งหมด', sub: 'ที่วิเคราะห์', color: '#7c3aed', bg: '#f5f3ff' },
+    { num: avgScore + '%', label: 'Match เฉลี่ย', sub: 'ทุก Resume', color: avgScore>=70?'#16a34a':avgScore>=40?'#d97706':'#dc2626', bg: avgScore>=70?'#f0fdf4':avgScore>=40?'#fef9c3':'#fff1f2' },
+    { num: highMatch, label: 'Match สูง (≥70%)', sub: `${totalResume ? Math.round(highMatch/totalResume*100) : 0}% ของ Resume ทั้งหมด`, color: '#16a34a', bg: '#f0fdf4' },
+    { num: hrSentCount, label: 'HR ส่งผู้บริหาร', sub: 'เพื่อพิจารณา', color: '#0891b2', bg: '#f0f9ff' },
+    { num: approvedCount, label: 'ผ่านการอนุมัติ', sub: 'จากผู้บริหาร', color: '#16a34a', bg: '#dcfce7' },
+  ].map(k => `
+    <div class="analytics-kpi-box" style="border-top-color:${k.color};background:${k.bg};">
+      <div class="akpi-num" style="color:${k.color};">${k.num}</div>
+      <div class="akpi-label">${k.label}</div>
+      <div class="akpi-sub">${k.sub}</div>
+    </div>
+  `).join('');
+
+  // Chart: Score Distribution (Doughnut)
+  const ctx = document.getElementById('chartScoreDist');
+  if (ctx) {
+    if (_analyticsChart) { _analyticsChart.destroy(); _analyticsChart = null; }
+    if (totalResume > 0) {
+      _analyticsChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Match สูง (≥70%)', 'Match ปานกลาง (40-69%)', 'Match ต่ำ (<40%)'],
+          datasets: [{
+            data: [highMatch, midMatch, lowMatch],
+            backgroundColor: ['#16a34a', '#d97706', '#dc2626'],
+            borderColor: ['#15803d', '#b45309', '#b91c1c'],
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 12, family: 'Segoe UI' }, padding: 16 } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} คน (${totalResume ? Math.round(ctx.parsed/totalResume*100) : 0}%)` } }
+          },
+          cutout: '62%',
+        }
+      });
+    } else {
+      ctx.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:260px;color:var(--gray-300);font-size:1rem;font-weight:700;">ยังไม่มีข้อมูล</div>';
+    }
+  }
+
+  // Recruitment Funnel
+  const funnelEl = document.getElementById('analyticsFunnel');
+  if (funnelEl) {
+    const steps = [
+      { label: '📄 Resume ทั้งหมด', count: totalResume, color: '#2563eb' },
+      { label: '✅ Match ≥70%', count: highMatch, color: '#0891b2' },
+      { label: '👩‍💼 HR คัดเลือก', count: hrSentCount, color: '#7c3aed' },
+      { label: '👔 ผู้บริหารพิจารณา', count: execCandidates.filter(r => (execReviews[r.id]||[]).some(v=>v.decision)).length, color: '#d97706' },
+      { label: '🎉 ผ่านการอนุมัติ', count: approvedCount, color: '#16a34a' },
+    ];
+    const maxCount = Math.max(...steps.map(s => s.count), 1);
+    funnelEl.innerHTML = steps.map(s => `
+      <div class="funnel-row">
+        <div class="funnel-label">${s.label}</div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar" style="width:${Math.max(s.count/maxCount*100,s.count>0?8:0)}%;background:${s.color};">${s.count > 0 ? s.count + ' คน' : ''}</div>
+        </div>
+        <div class="funnel-count" style="color:${s.color};">${s.count}</div>
+      </div>
+    `).join('');
+  }
+
+  // Skill Gap Analysis (most missing skills)
+  const skillGapEl = document.getElementById('analyticsSkillGap');
+  if (skillGapEl) {
+    const missingCount = {};
+    results.forEach(r => { (r.missing||[]).forEach(s => { missingCount[s] = (missingCount[s]||0) + 1; }); });
+    const sorted = Object.entries(missingCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    if (sorted.length === 0) {
+      skillGapEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-300);">ยังไม่มีข้อมูล วิเคราะห์ Resume ก่อน</div>';
+    } else {
+      const maxM = sorted[0][1];
+      skillGapEl.innerHTML = sorted.map(([skill, count]) => `
+        <div class="skill-gap-row">
+          <div class="skill-gap-name" title="${skill}">${skill}</div>
+          <div class="skill-gap-bar-wrap"><div class="skill-gap-bar" style="width:${count/maxM*100}%"></div></div>
+          <div class="skill-gap-pct">${count}/${totalResume}</div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // Recruiter Performance
+  const recEl = document.getElementById('analyticsRecruiter');
+  if (recEl) {
+    const grouped = {};
+    positionsPool.forEach(p => {
+      const key = p.jd.recruiter || 'ไม่ระบุ';
+      if (!grouped[key]) grouped[key] = { recruiter: key, positions: 0, resumes: 0, highMatch: 0, avgScore: [] };
+      grouped[key].positions++;
+      (p.results||[]).forEach(r => {
+        grouped[key].resumes++;
+        if (r.score >= 70) grouped[key].highMatch++;
+        grouped[key].avgScore.push(r.score);
+      });
+    });
+    const recList = Object.values(grouped);
+    if (!recList.length) {
+      recEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-300);">ยังไม่มีข้อมูล</div>';
+    } else {
+      const palette = ['#2563eb','#7c3aed','#0891b2','#16a34a','#d97706'];
+      recEl.innerHTML = recList.map((g,i) => {
+        const avg = g.avgScore.length ? Math.round(g.avgScore.reduce((a,b)=>a+b,0)/g.avgScore.length) : 0;
+        const color = palette[i % palette.length];
+        const avgColor = avg>=70?'#16a34a':avg>=40?'#d97706':'#dc2626';
+        return `
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--gray-50);border-radius:10px;border-left:4px solid ${color};">
+            <div style="width:40px;height:40px;border-radius:50%;background:${color};color:white;font-size:1rem;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${g.recruiter.charAt(0)}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;font-size:0.9rem;color:var(--gray-800);">${g.recruiter}</div>
+              <div style="font-size:0.78rem;color:var(--gray-500);">${g.positions} ตำแหน่ง · ${g.resumes} Resume</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:1.2rem;font-weight:900;color:${avgColor};">${avg}%</div>
+              <div style="font-size:0.7rem;color:var(--gray-400);">avg match</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:1.2rem;font-weight:900;color:#16a34a;">${g.highMatch}</div>
+              <div style="font-size:0.7rem;color:var(--gray-400);">≥70%</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+  }
+
+  // Position comparison
+  const posEl = document.getElementById('analyticsPositionContent');
+  if (posEl) {
+    if (!positionsPool.length) {
+      posEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-300);">ยังไม่มีข้อมูลตำแหน่งงาน</div>';
+    } else {
+      const rows = positionsPool.map((p, i) => {
+        const res = p.results || [];
+        const avg = res.length ? Math.round(res.reduce((a,r)=>a+r.score,0)/res.length) : 0;
+        const high = res.filter(r=>r.score>=70).length;
+        const mid  = res.filter(r=>r.score>=40&&r.score<70).length;
+        const low  = res.filter(r=>r.score<40).length;
+        const avgColor = avg>=70?'#16a34a':avg>=40?'#d97706':'#dc2626';
+        const best = [...res].sort((a,b)=>b.score-a.score)[0];
+        return `<tr>
+          <td style="padding:11px 14px;font-weight:700;color:var(--gray-800);">${p.jd.title||'ไม่ระบุ'}</td>
+          <td style="padding:11px 14px;color:var(--gray-500);">${p.jd.department||'-'}</td>
+          <td style="padding:11px 14px;color:var(--gray-600);">${p.jd.recruiter||'-'}</td>
+          <td style="padding:11px 14px;">${res.length}</td>
+          <td style="padding:11px 14px;font-weight:900;color:${avgColor};">${res.length ? avg+'%' : '—'}</td>
+          <td style="padding:11px 14px;">
+            ${res.length ? `<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">${high} สูง</span>
+            <span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;margin-left:4px;">${mid} กลาง</span>
+            <span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;margin-left:4px;">${low} ต่ำ</span>` : '—'}
+          </td>
+          <td style="padding:11px 14px;font-weight:700;color:var(--gray-700);">${best ? best.name + ' (' + best.score + '%)' : '—'}</td>
+        </tr>`;
+      }).join('');
+      posEl.innerHTML = `
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+            <thead><tr style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:white;">
+              <th style="padding:11px 14px;text-align:left;border-radius:8px 0 0 0;">ตำแหน่งงาน</th>
+              <th style="padding:11px 14px;text-align:left;">แผนก</th>
+              <th style="padding:11px 14px;text-align:left;">Recruiter</th>
+              <th style="padding:11px 14px;text-align:left;">จำนวน Resume</th>
+              <th style="padding:11px 14px;text-align:left;">Match เฉลี่ย</th>
+              <th style="padding:11px 14px;text-align:left;">การกระจาย</th>
+              <th style="padding:11px 14px;text-align:left;border-radius:0 8px 0 0;">อันดับ 1</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+  }
+}
+
+// =================== Email Template Generator ===================
+function generateEmailTemplate() {
+  const candId = document.getElementById('emailCandSelect')?.value;
+  const type = document.getElementById('emailTypeSelect')?.value || 'invite';
+  if (!candId) { document.getElementById('emailTemplateOutput').style.display = 'none'; return; }
+  const allCands = [...results, ...execCandidates.filter(c => !results.find(r=>r.id===c.id))];
+  const cand = allCands.find(r => String(r.id) === String(candId));
+  if (!cand) return;
+  const name = cand.name || 'ผู้สมัคร';
+  const position = cand.position || jdData.title || 'ตำแหน่งงาน';
+  const company = 'บริษัทของเรา';
+  const recruiterName = jdData.recruiter || 'ทีม HR';
+  const recruiterEmail = jdData.recruiterEmail || 'hr@company.com';
+  const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+  let subject = '', body = '';
+  if (type === 'invite') {
+    subject = `เชิญเข้ารับการสัมภาษณ์ — ตำแหน่ง ${position}`;
+    body = `เรียน คุณ${name}
+
+ขอบคุณที่ให้ความสนใจสมัครงานในตำแหน่ง ${position} กับ${company}
+
+ทีมสรรหาของเราได้พิจารณาใบสมัครของท่านแล้ว และมีความยินดีเชิญท่านเข้ารับการสัมภาษณ์งาน
+
+รายละเอียดการสัมภาษณ์:
+• ตำแหน่ง: ${position}
+• วันที่: [กรุณาระบุวันที่]
+• เวลา: [กรุณาระบุเวลา]
+• สถานที่: [กรุณาระบุสถานที่ / ลิงก์ประชุมออนไลน์]
+
+กรุณายืนยันการเข้าร่วมสัมภาษณ์ภายใน 2 วันทำการ โดยตอบกลับ email นี้ หรือติดต่อ ${recruiterName} ที่ ${recruiterEmail}
+
+หากมีข้อสงสัยประการใด กรุณาอย่าลังเลที่จะติดต่อ
+
+ขอแสดงความนับถือ
+${recruiterName}
+ฝ่ายสรรหาและคัดเลือกบุคลากร
+${company}
+Email: ${recruiterEmail}
+วันที่: ${today}`;
+  } else if (type === 'reject') {
+    subject = `แจ้งผลการพิจารณาใบสมัคร — ตำแหน่ง ${position}`;
+    body = `เรียน คุณ${name}
+
+ขอบคุณที่ให้ความสนใจสมัครงานในตำแหน่ง ${position} กับ${company}
+
+หลังจากที่ทีมสรรหาได้พิจารณาใบสมัครและคุณสมบัติของท่านอย่างรอบคอบแล้ว เราขอแจ้งให้ทราบว่าในรอบนี้ เราได้คัดเลือกผู้สมัครที่มีคุณสมบัติตรงกับความต้องการของตำแหน่งมากกว่า
+
+เราขอบคุณสำหรับเวลาและความสนใจของท่าน และขอสนับสนุนให้ท่านติดตามตำแหน่งงานที่เปิดรับในอนาคตของ${company}
+
+ขอแสดงความนับถือ
+${recruiterName}
+ฝ่ายสรรหาและคัดเลือกบุคลากร
+${company}
+Email: ${recruiterEmail}
+วันที่: ${today}`;
+  } else if (type === 'pending') {
+    subject = `อัปเดตสถานะใบสมัคร — ตำแหน่ง ${position}`;
+    body = `เรียน คุณ${name}
+
+ขอบคุณที่สนใจสมัครงานในตำแหน่ง ${position} กับ${company}
+
+ขณะนี้ทีมของเรากำลังอยู่ในขั้นตอนการพิจารณาใบสมัครของท่าน ซึ่งต้องใช้เวลาเพิ่มเติมสักระยะ
+
+เราคาดว่าจะสามารถแจ้งผลได้ภายใน [ระบุระยะเวลา] วันทำการ หากท่านมีข้อสงสัยหรือต้องการสอบถามข้อมูลเพิ่มเติม กรุณาติดต่อ ${recruiterName} ที่ ${recruiterEmail}
+
+ขอแสดงความนับถือ
+${recruiterName}
+ฝ่ายสรรหาและคัดเลือกบุคลากร
+${company}
+Email: ${recruiterEmail}
+วันที่: ${today}`;
+  } else if (type === 'offer') {
+    subject = `ข้อเสนองาน (Job Offer) — ตำแหน่ง ${position}`;
+    body = `เรียน คุณ${name}
+
+ยินดีด้วยเป็นอย่างยิ่ง!
+
+${company} มีความยินดีเป็นอย่างยิ่งที่จะเสนองานตำแหน่ง ${position} ให้แก่ท่าน หลังจากผ่านกระบวนการสัมภาษณ์และพิจารณาคุณสมบัติแล้ว เราเชื่อมั่นว่าท่านจะเป็นทรัพยากรบุคคลที่มีคุณค่าสำหรับทีมงานของเรา
+
+รายละเอียด Job Offer:
+• ตำแหน่ง: ${position}
+• วันเริ่มงาน: [กรุณาระบุ]
+• เงินเดือน: [กรุณาระบุ]
+• สวัสดิการ: [กรุณาระบุ]
+
+กรุณาตอบรับข้อเสนอนี้ภายใน [X] วันทำการ โดยตอบกลับ email นี้ หรือลงนามใน Offer Letter แนบ
+
+เราตั้งตารอต้อนรับท่านเข้าสู่ทีม!
+
+ขอแสดงความนับถือ
+${recruiterName}
+ฝ่ายสรรหาและคัดเลือกบุคลากร
+${company}
+Email: ${recruiterEmail}
+วันที่: ${today}`;
+  }
+  const ta = document.getElementById('emailTemplateText');
+  if (ta) ta.value = `Subject: ${subject}\n\n${body}`;
+  document.getElementById('emailTemplateOutput').style.display = 'block';
+}
+
+function copyEmailToClipboard() {
+  const ta = document.getElementById('emailTemplateText');
+  if (!ta) return;
+  navigator.clipboard.writeText(ta.value).then(() => showToast('📋 คัดลอก Email เรียบร้อย!')).catch(() => { ta.select(); document.execCommand('copy'); showToast('📋 คัดลอกแล้ว!'); });
+}
+
+function downloadEmailDraft() {
+  const ta = document.getElementById('emailTemplateText');
+  if (!ta || !ta.value) return;
+  const blob = new Blob(['\uFEFF' + ta.value], { type: 'text/plain;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `EmailDraft_${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('💾 Download Email Draft แล้ว!');
+}
+
+// =================== Firebase Integration ===================
+const FB_CONFIG_KEY = 'rs_fb_config_v1';
+let fbApp       = null;
+let fbDb        = null;
+let fbSessionId = null;
+let fbListener  = null;
+
+function loadFbConfig() {
+  try { return JSON.parse(localStorage.getItem(FB_CONFIG_KEY)) || null; } catch(e) { return null; }
+}
+
+function saveFbConfig() {
+  const apiKey      = document.getElementById('fbApiKey')?.value.trim();
+  const projectId   = document.getElementById('fbProjectId')?.value.trim();
+  const databaseURL = document.getElementById('fbDatabaseURL')?.value.trim();
+  const appId       = document.getElementById('fbAppId')?.value.trim();
+  if (!apiKey || !projectId || !databaseURL) {
+    showToast('⚠️ กรุณากรอก API Key, Project ID และ Database URL ให้ครบ');
+    return;
+  }
+  const cfg = { apiKey, projectId, databaseURL, appId: appId || '' };
+  localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
+  // Re-init Firebase with new config
+  try { initFirebase(cfg); } catch(e) {}
+  updateFbStatusBtn();
+  showToast('✅ บันทึกการตั้งค่า Firebase แล้ว');
+  const res = document.getElementById('fbTestResult');
+  if (res) {
+    res.style.display='block'; res.style.background='#dcfce7'; res.style.color='#15803d';
+    res.textContent='✅ บันทึกแล้ว — กด "ทดสอบเชื่อมต่อ" เพื่อยืนยัน';
+  }
+}
+
+function clearFbConfig() {
+  if (!confirm('ลบการตั้งค่า Firebase ออกจากเครื่องนี้หรือไม่?')) return;
+  localStorage.removeItem(FB_CONFIG_KEY);
+  ['fbApiKey','fbProjectId','fbDatabaseURL','fbAppId'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  fbDb = null; fbApp = null;
+  updateFbStatusBtn();
+  showToast('🗑 ล้างการตั้งค่า Firebase แล้ว');
+}
+
+function openFbConfig() {
+  const cfg = loadFbConfig();
+  if (cfg) {
+    const f = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+    f('fbApiKey',      cfg.apiKey);
+    f('fbProjectId',   cfg.projectId);
+    f('fbDatabaseURL', cfg.databaseURL);
+    f('fbAppId',       cfg.appId);
+  }
+  const modal = document.getElementById('firebaseConfigModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeFbConfig() {
+  const modal = document.getElementById('firebaseConfigModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function updateFbStatusBtn() {
+  const btn = document.getElementById('fbStatusBtn');
+  if (!btn) return;
+  const cfg = loadFbConfig();
+  if (cfg?.apiKey && fbDb) {
+    btn.style.background = 'rgba(22,163,74,0.12)';
+    btn.style.color      = '#16a34a';
+    btn.style.borderColor= 'rgba(22,163,74,0.3)';
+    btn.textContent      = '☁️ Firebase ✓';
+  } else if (cfg?.apiKey) {
+    btn.style.background = 'rgba(234,88,12,0.12)';
+    btn.style.color      = '#ea580c';
+    btn.style.borderColor= 'rgba(234,88,12,0.3)';
+    btn.textContent      = '☁️ Firebase (ยังไม่เชื่อม)';
+  } else {
+    btn.style.background = 'rgba(156,163,175,0.12)';
+    btn.style.color      = '#9ca3af';
+    btn.style.borderColor= 'rgba(156,163,175,0.3)';
+    btn.textContent      = '☁️ ตั้งค่า Firebase';
+  }
+}
+
+function initFirebase(cfg) {
+  // Delete existing app if any
+  if (fbApp) {
+    try { firebase.app('rs-app').delete(); } catch(e) {}
+    try { firebase.app().delete(); } catch(e) {}
+    fbApp = null; fbDb = null;
+  }
+  // Check if app already exists
+  let existingApp = null;
+  try { existingApp = firebase.app('rs-app'); } catch(e) {}
+  if (existingApp) {
+    fbApp = existingApp;
+  } else {
+    fbApp = firebase.initializeApp({
+      apiKey:      cfg.apiKey,
+      projectId:   cfg.projectId,
+      databaseURL: cfg.databaseURL,
+      appId:       cfg.appId || undefined
+    }, 'rs-app');
+  }
+  fbDb = firebase.database(fbApp);
+  updateFbStatusBtn();
+  return fbDb;
+}
+
+async function testFbConnection() {
+  const res = document.getElementById('fbTestResult');
+  const setRes = (bg, color, msg) => {
+    if (!res) return;
+    res.style.display='block'; res.style.background=bg; res.style.color=color; res.textContent=msg;
+  };
+  setRes('#eff6ff','#1d4ed8','🔄 กำลังทดสอบ...');
+  const cfg = loadFbConfig();
+  if (!cfg?.apiKey) { setRes('#fff1f2','#b91c1c','⚠️ กรุณาบันทึกการตั้งค่าก่อน'); return; }
+  try {
+    if (!fbDb) initFirebase(cfg);
+    const testRef = fbDb.ref('rs_ping');
+    await testRef.set({ ts: Date.now(), by: 'HR-System' });
+    await testRef.remove();
+    setRes('#dcfce7','#15803d','✅ เชื่อมต่อ Firebase สำเร็จ! พร้อมใช้งาน');
+    updateFbStatusBtn();
+  } catch(err) {
+    setRes('#fff1f2','#b91c1c','❌ เชื่อมต่อไม่ได้: ' + (err.message || err));
+  }
+}
+
+/** Generate a session ID for this recruitment round */
+function getOrCreateSessionId() {
+  if (fbSessionId) return fbSessionId;
+  // Try to derive from job title + date for consistency
+  const base = (jdData.title || 'session').replace(/\s+/g,'_').slice(0,20);
+  fbSessionId = base + '_' + Date.now();
+  return fbSessionId;
+}
+
+/** Push all exec candidates + session meta to Firebase */
+async function pushCandidatesToFirebase() {
+  const cfg = loadFbConfig();
+  if (!cfg?.apiKey) return false;
+  try {
+    if (!fbDb) initFirebase(cfg);
+    const sessionId = getOrCreateSessionId();
+    const sessionRef = fbDb.ref('rs_sessions/' + sessionId);
+
+    // Write session meta
+    await sessionRef.child('meta').set({
+      jobTitle:    jdData.title    || '',
+      department:  jdData.department || '',
+      recruiter:   jdData.recruiter  || '',
+      recruiterEmail: jdData.recruiterEmail || '',
+      createdAt:   Date.now(),
+      updatedAt:   Date.now(),
+      candidateCount: execCandidates.length
+    });
+
+    // Write each candidate
+    for (const r of execCandidates) {
+      const hrop   = hrOperationReviews[r.id] || {};
+      const execs  = getExecList(r.id);
+      await sessionRef.child('exec_candidates/' + r.id).set({
+        id:         r.id,
+        name:       r.name       || '',
+        position:   r.position   || jdData.title || '',
+        score:      r.score      || 0,
+        contact:    r.contact    || '',
+        education:  r.education  || '',
+        salary:     r.salary     || '',
+        hrComment:  hrop.hrComment || '',
+        hrNotes:    hrop.hrNotes   || '',
+        interviewScore: hrop.interviewScore || '',
+        executives: execs.map(ex => ({ name: ex.name||'', email: ex.email||'' }))
+      });
+    }
+    showToast('☁️ อัปโหลดข้อมูลขึ้น Firebase แล้ว (' + execCandidates.length + ' คน)');
+    return true;
+  } catch(err) {
+    console.error('Firebase push error:', err);
+    showToast('❌ อัปโหลด Firebase ไม่สำเร็จ: ' + (err.message || err));
+    return false;
+  }
+}
+
+/** Generate exec review link per executive */
+function getExecReviewLink(execEmail, execName) {
+  const cfg = loadFbConfig();
+  if (!cfg?.apiKey || !fbSessionId) return null;
+  const base = window.location.href.replace(/[^/]*$/, '');
+  const params = new URLSearchParams({
+    s:     fbSessionId,
+    e:     execEmail,
+    n:     execName || execEmail,
+    ak:    cfg.apiKey,
+    pid:   cfg.projectId,
+    db:    cfg.databaseURL,
+    appid: cfg.appId || ''
+  });
+  return base + 'exec.html?' + params.toString();
+}
+
+/** Copy exec link for one executive to clipboard */
+function copyExecLink(execEmail, execName) {
+  const link = getExecReviewLink(execEmail, execName);
+  if (!link) {
+    showToast('⚠️ กรุณาตั้งค่า Firebase และส่งข้อมูลก่อน');
+    openFbConfig();
+    return;
+  }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(() => showToast('📋 คัดลอก Link ผู้บริหารแล้ว!'));
+  } else {
+    prompt('คัดลอก Link สำหรับ ' + (execName || execEmail), link);
+  }
+}
+
+/** Show all exec links in a popup dialog */
+function showAllExecLinks() {
+  const cfg = loadFbConfig();
+  if (!cfg?.apiKey || !fbSessionId) {
+    showToast('⚠️ กรุณาตั้งค่า Firebase และกด "ส่งผู้บริหารพิจารณา" ก่อน');
+    if (!cfg?.apiKey) openFbConfig();
+    return;
+  }
+  // Collect unique executives across all candidates
+  const seen = new Map();
+  execCandidates.forEach(r => {
+    getExecList(r.id).forEach(ex => {
+      if (!ex.email) return;
+      const key = ex.email.toLowerCase();
+      if (!seen.has(key)) seen.set(key, { name: ex.name||'', email: ex.email });
+    });
+  });
+  if (seen.size === 0) { showToast('ยังไม่มีรายชื่อผู้บริหาร'); return; }
+
+  const rows = [...seen.values()].map(ex => {
+    const link = getExecReviewLink(ex.email, ex.name);
+    return `<tr>
+      <td style="padding:8px 10px;font-weight:700;white-space:nowrap;">${ex.name || ex.email}</td>
+      <td style="padding:8px 10px;font-size:0.78rem;color:#0369a1;">${ex.email}</td>
+      <td style="padding:8px 10px;">
+        <button class="btn btn-primary btn-sm" style="font-size:0.72rem;"
+          onclick="navigator.clipboard&&navigator.clipboard.writeText(${JSON.stringify(link)}).then(()=>this.textContent='✓ คัดลอกแล้ว').catch(()=>prompt('Link',${JSON.stringify(link)}));!navigator.clipboard&&prompt('Link',${JSON.stringify(link)})">
+          📋 คัดลอก Link
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:7000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:28px;max-width:700px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:1.1rem;font-weight:800;color:var(--gray-800);">🔗 Links ผู้บริหารทั้งหมด</div>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="background:var(--gray-100);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:1rem;">✕</button>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;font-size:0.82rem;color:#1d4ed8;margin-bottom:16px;">
+        📨 ส่ง link เหล่านี้ให้ผู้บริหารเปิดในเบราว์เซอร์ — ไม่ต้อง Login ไม่ต้องติดตั้งอะไร
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+        <thead><tr style="background:var(--gray-50);">
+          <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--gray-200);">ชื่อ</th>
+          <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--gray-200);">Email</th>
+          <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--gray-200);">Link</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="this.closest('[style*=fixed]').remove()">ปิด</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+/** Listen for exec review updates from Firebase (real-time) */
+function listenExecReviews() {
+  if (!fbDb || !fbSessionId) return;
+  const reviewsRef = fbDb.ref('rs_sessions/' + fbSessionId + '/exec_reviews');
+  // Detach old listener
+  if (fbListener) { reviewsRef.off('value', fbListener); fbListener = null; }
+
+  fbListener = reviewsRef.on('value', snap => {
+    const data = snap.val() || {};
+    let changed = false;
+    Object.entries(data).forEach(([candId, execData]) => {
+      const cid  = Number(candId);
+      const cand = execCandidates.find(r => r.id === cid);
+      if (!cand) return;
+      const execs = getExecList(cid);
+      if (!execReviews[cid]) execReviews[cid] = [];
+      execs.forEach((ex, idx) => {
+        const emailKey = (ex.email||'').replace(/\./g,'_').replace(/@/g,'__');
+        const rev      = execData[emailKey];
+        if (!rev) return;
+        const prev = execReviews[cid][idx] || {};
+        // Only update if reviewStatus changed (avoid overwriting local edits with stale data)
+        const prevStatus = prev.reviewStatus || 'Pending';
+        const newStatus  = rev.reviewStatus  || 'Pending';
+        if (prevStatus !== newStatus || !prev._fromFirebase) {
+          execReviews[cid][idx] = {
+            decision:       rev.decision       || '',
+            feedback:       rev.feedback       || rev.comment || '',
+            comment:        rev.feedback       || rev.comment || '',
+            recommendation: rev.recommendation || '',
+            reviewStatus:   newStatus,
+            viewStatus:     newStatus === 'Submitted' ? 'Viewed'
+                            : newStatus === 'Draft'   ? 'Viewed' : 'Not Opened',
+            openedAt:       rev.openedAt   ? new Date(rev.openedAt)   : (newStatus !== 'Pending' ? new Date() : null),
+            draftSavedAt:   rev.reviewedAt && newStatus === 'Draft'  ? new Date(rev.reviewedAt) : (prev.draftSavedAt||null),
+            reviewedAt:     rev.reviewedAt && newStatus === 'Submitted' ? new Date(rev.reviewedAt) : (prev.reviewedAt||null),
+            salary:         rev.salary         || '',
+            rating:         rev.rating         || '',
+            _fromFirebase:  true
+          };
+          changed = true;
+        }
+      });
+    });
+    if (changed) {
+      // Re-render tracking view if it's visible
+      const execTab = document.getElementById('tab-execreview');
+      if (execTab && execTab.classList.contains('active')) {
+        renderHRTrackingView();
+        renderExecProgress();
+        updateTrackingPendingBadge();
+      }
+      updateTimelineBadge();
+      triggerAutoSave();
+      // Update exec badge
+      const badge = document.getElementById('execBadge');
+      if (badge) {
+        const pending = execCandidates.filter(r => {
+          const revs = execReviews[r.id] || [];
+          return revs.some(v => v.reviewStatus !== 'Submitted');
+        }).length;
+        badge.textContent = pending;
+        badge.style.display = pending > 0 ? '' : 'none';
+      }
+    }
+  });
+}
+
+/** Called after HR clicks "ส่งผู้บริหารพิจารณา" — push + listen */
+async function pushAndListenFirebase() {
+  const cfg = loadFbConfig();
+  if (!cfg?.apiKey) return; // Firebase not configured — skip silently
+  try {
+    if (!fbDb) initFirebase(cfg);
+    const ok = await pushCandidatesToFirebase();
+    if (ok) listenExecReviews();
+  } catch(e) { console.warn('Firebase push/listen error:', e); }
+}
+
 // =================== Initialize ===================
 window.addEventListener('load', async () => {
+  // Initialize EmailJS if config exists
+  try {
+    const ejsCfg = loadEmailConfig();
+    if (ejsCfg?.publicKey && window.emailjs) {
+      emailjs.init({ publicKey: ejsCfg.publicKey });
+    }
+  } catch(e) {}
+
+  // Initialize Firebase if config exists
+  try {
+    const fbCfg = loadFbConfig();
+    if (fbCfg?.apiKey && window.firebase) {
+      initFirebase(fbCfg);
+    }
+  } catch(e) {}
+  updateFbStatusBtn();
+
   // Try to restore saved state first
   const restored = await initPersistence();
 
