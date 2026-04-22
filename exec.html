@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>👔 Executive Review Portal</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --primary: #6d28d9;
+    --primary-light: #ede9fe;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --info: #0891b2;
+    --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+    --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+    --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937; --gray-900: #111827;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.15);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #0a0f2e 0%, #1a1a4e 50%, #0f172a 100%);
+    min-height: 100vh; color: var(--gray-800);
+  }
+
+  /* Header */
+  .exec-header {
+    background: linear-gradient(135deg, #3730a3, #6d28d9);
+    padding: 20px 24px;
+    box-shadow: 0 4px 20px rgba(109,40,217,0.4);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .exec-header-inner {
+    max-width: 860px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .exec-header h1 { font-size: 1.3rem; font-weight: 900; color: white; }
+  .exec-header .exec-meta { font-size: 0.8rem; color: rgba(255,255,255,0.65); margin-top: 2px; }
+  .exec-progress-strip {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.12); border-radius: 10px; padding: 8px 14px;
+    font-size: 0.8rem; font-weight: 700; color: white; white-space: nowrap;
+  }
+
+  /* Main content */
+  .exec-main { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  /* Loading / Error / Done screens */
+  .fullscreen-msg {
+    max-width: 480px; margin: 80px auto; text-align: center;
+    background: white; border-radius: var(--radius); padding: 40px 32px;
+    box-shadow: var(--shadow-lg);
+  }
+  .fullscreen-msg .icon { font-size: 3.5rem; margin-bottom: 16px; }
+  .fullscreen-msg h2 { font-size: 1.3rem; font-weight: 800; color: var(--gray-800); margin-bottom: 8px; }
+  .fullscreen-msg p { font-size: 0.9rem; color: var(--gray-500); line-height: 1.6; }
+
+  /* Candidate Card */
+  .cand-section {
+    background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow-lg); margin-bottom: 24px;
+    overflow: hidden; border: 2px solid transparent;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .cand-section.status-draft     { border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,0.15), var(--shadow-lg); }
+  .cand-section.status-submitted { border-color: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,0.15), var(--shadow-lg); }
+
+  .cand-header {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    padding: 18px 22px;
+    border-bottom: 2px solid var(--gray-100);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .cand-num {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #6d28d9, #3730a3);
+    color: white; font-size: 1.1rem; font-weight: 900;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .cand-title-block { flex: 1; min-width: 0; }
+  .cand-name { font-size: 1.15rem; font-weight: 800; color: var(--gray-800); }
+  .cand-sub { font-size: 0.8rem; color: var(--gray-500); margin-top: 3px; }
+  .cand-score-badge {
+    font-size: 1.6rem; font-weight: 900; flex-shrink: 0; text-align: right;
+  }
+  .score-hi { color: #16a34a; } .score-md { color: #d97706; } .score-lo { color: #dc2626; }
+
+  /* Status pill */
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 11px; border-radius: 20px; font-size: 0.73rem; font-weight: 800;
+    white-space: nowrap;
+  }
+  .pill-pending  { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+  .pill-draft    { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+  .pill-submitted{ background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+
+  /* Info grid */
+  .info-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0; border-bottom: 1px solid var(--gray-100);
+  }
+  .info-cell {
+    padding: 12px 18px; border-right: 1px solid var(--gray-100);
+  }
+  .info-cell:last-child { border-right: none; }
+  .info-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--gray-400); }
+  .info-value { font-size: 0.9rem; font-weight: 700; color: var(--gray-700); margin-top: 3px; }
+
+  /* Skills */
+  .skills-row { padding: 14px 18px; border-bottom: 1px solid var(--gray-100); }
+  .skills-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-500); margin-bottom: 8px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { padding: 3px 10px; border-radius: 16px; font-size: 0.78rem; font-weight: 600; }
+  .tag-match { background: #dcfce7; color: #15803d; }
+  .tag-miss  { background: #fee2e2; color: #b91c1c; }
+
+  /* HR Notes */
+  .hr-notes-row {
+    padding: 14px 18px; border-bottom: 1px solid var(--gray-100);
+    background: #fffbeb;
+  }
+  .hr-notes-label { font-size: 0.75rem; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .hr-notes-text { font-size: 0.875rem; color: #78350f; line-height: 1.6; white-space: pre-wrap; }
+
+  /* Evaluation form */
+  .eval-form { padding: 20px 22px; }
+  .eval-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-500); margin-bottom: 14px; }
+  .decision-btns { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .decision-btn {
+    padding: 13px 18px; border: 2px solid var(--gray-200); border-radius: 10px; cursor: pointer;
+    font-size: 0.95rem; font-weight: 700; background: white; text-align: left;
+    transition: all 0.18s; display: flex; align-items: center; gap: 12px;
+  }
+  .decision-btn .db-icon { font-size: 1.3rem; flex-shrink: 0; }
+  .decision-btn .db-text { display: flex; flex-direction: column; }
+  .decision-btn .db-label { font-size: 0.9rem; font-weight: 800; }
+  .decision-btn .db-desc  { font-size: 0.75rem; font-weight: 500; color: var(--gray-400); margin-top: 1px; }
+  .decision-btn:hover { transform: translateX(3px); border-color: var(--gray-300); }
+  .decision-btn.active-pass  { background: #f0fdf4; border-color: #16a34a; color: #15803d; }
+  .decision-btn.active-pass .db-desc { color: #15803d; }
+  .decision-btn.active-fail  { background: #fff1f2; border-color: #dc2626; color: #b91c1c; }
+  .decision-btn.active-fail .db-desc { color: #b91c1c; }
+  .decision-btn.active-more  { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+  .decision-btn.active-more .db-desc { color: #1d4ed8; }
+  .eval-field { margin-bottom: 14px; }
+  .eval-field label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--gray-600); margin-bottom: 5px; }
+  .eval-field textarea, .eval-field input[type="text"] {
+    width: 100%; padding: 10px 13px;
+    border: 2px solid var(--gray-200); border-radius: 8px;
+    font-size: 0.875rem; font-family: inherit; transition: border-color 0.2s;
+    background: white;
+  }
+  .eval-field textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+  .eval-field textarea:focus, .eval-field input:focus { outline: none; border-color: var(--primary); }
+  .eval-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .eval-grid { grid-template-columns: 1fr; } }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px; border: none; border-radius: 9px; cursor: pointer;
+    font-size: 0.9rem; font-weight: 700; transition: all 0.18s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: #5b21b6; transform: translateY(-1px); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #15803d; transform: translateY(-1px); }
+  .btn-secondary { background: var(--gray-100); color: var(--gray-700); }
+  .btn-secondary:hover { background: var(--gray-200); }
+  .btn-lg { padding: 14px 28px; font-size: 1rem; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+  /* Card footer */
+  .cand-footer {
+    padding: 14px 22px; background: var(--gray-50);
+    border-top: 1px solid var(--gray-100);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+
+  /* Submit all bar */
+  .submit-all-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(135deg, #1e1b4b, #3730a3);
+    padding: 14px 24px; z-index: 200;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    box-shadow: 0 -4px 20px rgba(55,48,163,0.4);
+  }
+  .submit-bar-info { color: white; }
+  .submit-bar-info .sbi-main { font-size: 0.9rem; font-weight: 800; }
+  .submit-bar-info .sbi-sub  { font-size: 0.75rem; opacity: 0.7; margin-top: 2px; }
+  .submit-bar-progress {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .sbp-dot {
+    width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.3);
+  }
+  .sbp-dot.done { background: #34d399; }
+  .sbp-dot.draft { background: #fbbf24; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--gray-800); color: white; padding: 10px 22px;
+    border-radius: 10px; font-size: 0.875rem; font-weight: 600;
+    z-index: 9000; opacity: 0; transition: all 0.3s; white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Spinner */
+  .spinner { width: 38px; height: 38px; border: 4px solid rgba(109,40,217,0.2); border-top-color: #6d28d9; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Config screen */
+  .config-card { background: white; border-radius: var(--radius); padding: 28px; max-width: 540px; margin: 40px auto; box-shadow: var(--shadow-lg); }
+  .config-card h2 { font-size: 1.15rem; font-weight: 800; margin-bottom: 6px; }
+  .config-card p { font-size: 0.875rem; color: var(--gray-500); margin-bottom: 20px; line-height: 1.5; }
+  .cfg-field { margin-bottom: 14px; }
+  .cfg-field label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--gray-600); margin-bottom: 5px; }
+  .cfg-field input { width: 100%; padding: 10px 13px; border: 2px solid var(--gray-200); border-radius: 8px; font-size: 0.875rem; font-family: inherit; }
+  .cfg-field input:focus { outline: none; border-color: var(--primary); }
+
+  /* Done screen */
+  .done-screen {
+    display: none; position: fixed; inset: 0;
+    background: linear-gradient(135deg, #0f172a, #1e1b4b);
+    z-index: 500; align-items: center; justify-content: center; padding: 24px;
+  }
+  .done-screen.show { display: flex; }
+  .done-card { background: white; border-radius: 20px; padding: 48px 36px; max-width: 460px; width: 100%; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.4); }
+  .done-icon { font-size: 5rem; margin-bottom: 20px; }
+  .done-card h2 { font-size: 1.5rem; font-weight: 900; color: var(--gray-800); margin-bottom: 10px; }
+  .done-card p { font-size: 0.9rem; color: var(--gray-500); line-height: 1.6; }
+
+  @media (max-width: 640px) {
+    .exec-header h1 { font-size: 1.05rem; }
+    .cand-header { padding: 14px 16px; }
+    .eval-form { padding: 16px; }
+    .info-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Done screen -->
+<div class="done-screen" id="doneScreen">
+  <div class="done-card">
+    <div class="done-icon">✅</div>
+    <h2>ส่งผลการประเมินแล้ว!</h2>
+    <p id="doneMsg">ขอบคุณที่ให้เวลาพิจารณาผู้สมัคร<br>ผลการประเมินของท่านส่งถึง HR เรียบร้อยแล้ว</p>
+    <div style="margin-top:28px;padding:16px;background:#f0fdf4;border-radius:12px;border:2px solid #86efac;">
+      <div style="font-size:0.85rem;font-weight:700;color:#15803d;">💬 ข้อมูลส่งถึง HR ผ่าน Real-time Database แล้ว</div>
+      <div style="font-size:0.78rem;color:#16a34a;margin-top:4px;">HR จะเห็นผลการประเมินของท่านทันที</div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center;" onclick="location.reload()">🔄 ดูสรุปการประเมินของฉัน</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Header (hidden until loaded) -->
+<div class="exec-header" id="execHeader" style="display:none;">
+  <div class="exec-header-inner">
+    <div>
+      <h1>👔 Executive Review Portal</h1>
+      <div class="exec-meta" id="headerMeta">กำลังโหลด...</div>
+    </div>
+    <div class="exec-progress-strip" id="progressStrip">
+      <span id="progressText">0/0 ประเมินแล้ว</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="exec-main" id="execMain">
+  <!-- Loading -->
+  <div class="fullscreen-msg" id="loadingScreen">
+    <div class="spinner"></div>
+    <h2>กำลังโหลดข้อมูล...</h2>
+    <p>กรุณารอสักครู่</p>
+  </div>
+
+  <!-- Error -->
+  <div class="fullscreen-msg" id="errorScreen" style="display:none;">
+    <div class="icon">⚠️</div>
+    <h2 id="errorTitle">ไม่พบข้อมูล</h2>
+    <p id="errorMsg">ลิงก์อาจหมดอายุ หรือข้อมูลถูกลบแล้ว<br>กรุณาติดต่อ HR เพื่อขอลิงก์ใหม่</p>
+  </div>
+
+  <!-- Firebase Config (shown if no config in URL) -->
+  <div id="configScreen" style="display:none;">
+    <div class="config-card">
+      <h2>⚙️ ตั้งค่าการเชื่อมต่อ</h2>
+      <p>กรุณากรอก Firebase config เพื่อเชื่อมต่อกับระบบ (ขอได้จาก HR ที่ส่ง link ให้ท่าน)</p>
+      <div class="cfg-field">
+        <label>Database URL</label>
+        <input type="text" id="cfgDbUrl" placeholder="https://YOUR-PROJECT-default-rtdb.firebaseio.com" />
+      </div>
+      <div class="cfg-field">
+        <label>API Key</label>
+        <input type="text" id="cfgApiKey" placeholder="AIzaSy..." />
+      </div>
+      <div class="cfg-field">
+        <label>Project ID</label>
+        <input type="text" id="cfgProjectId" placeholder="your-project-id" />
+      </div>
+      <button class="btn btn-primary" onclick="initFromConfigForm()">🚀 เชื่อมต่อ</button>
+    </div>
+  </div>
+
+  <!-- Candidates (rendered dynamically) -->
+  <div id="candidateList" style="display:none;"></div>
+</div>
+
+<!-- Submit All Bar -->
+<div class="submit-all-bar" id="submitBar" style="display:none;">
+  <div class="submit-bar-info">
+    <div class="sbi-main" id="submitBarTitle">กรุณาประเมินผู้สมัคร</div>
+    <div class="sbi-sub" id="submitBarSub">ประเมินให้ครบทุกคน แล้วกดส่งผลการประเมิน</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <div class="submit-bar-progress" id="submitBarDots"></div>
+    <button class="btn btn-success btn-lg" id="submitAllBtn" onclick="submitAllReviews()" disabled>
+      ✅ ส่งผลการประเมินทั้งหมด
+    </button>
+  </div>
+</div>
+
+<script>
+// =================== URL Params ===================
+const urlParams  = new URLSearchParams(location.search);
+const SESSION_ID = urlParams.get('s') || urlParams.get('session') || '';
+const EXEC_EMAIL = decodeURIComponent(urlParams.get('e') || urlParams.get('email') || '');
+const EXEC_NAME  = decodeURIComponent(urlParams.get('n') || urlParams.get('name')  || 'ผู้บริหาร');
+
+// Firebase config from URL params (HR embeds them in the link)
+const FB_API_KEY    = decodeURIComponent(urlParams.get('ak') || '');
+const FB_PROJECT_ID = decodeURIComponent(urlParams.get('pid') || '');
+const FB_DB_URL     = decodeURIComponent(urlParams.get('db') || '');
+const FB_APP_ID     = decodeURIComponent(urlParams.get('appid') || '');
+
+// =================== State ===================
+let db = null;
+let candidates = [];    // candidates assigned to this exec
+let sessionMeta = {};
+let reviews = {};       // { candidateId: { decision, feedback, comment, salary, recommendation } }
+let draftsSaved = {};   // { candidateId: true/false }
+const emailKey = EXEC_EMAIL.replace(/\./g, '_').replace(/@/g,'__');
+
+// =================== Init ===================
+window.addEventListener('load', () => {
+  if (FB_API_KEY && FB_PROJECT_ID && FB_DB_URL) {
+    initFirebase({ apiKey: FB_API_KEY, projectId: FB_PROJECT_ID, databaseURL: FB_DB_URL, appId: FB_APP_ID || '' });
+  } else {
+    // Try localStorage for config
+    const stored = localStorage.getItem('exec_fb_config');
+    if (stored) {
+      try { initFirebase(JSON.parse(stored)); return; } catch(e) {}
+    }
+    // Show config form
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('configScreen').style.display = 'block';
+  }
+});
+
+function initFromConfigForm() {
+  const dbUrl = document.getElementById('cfgDbUrl')?.value.trim();
+  const apiKey = document.getElementById('cfgApiKey')?.value.trim();
+  const projectId = document.getElementById('cfgProjectId')?.value.trim();
+  if (!dbUrl || !apiKey || !projectId) { showToast('⚠️ กรุณากรอกข้อมูลให้ครบ'); return; }
+  const cfg = { apiKey, projectId, databaseURL: dbUrl, authDomain: projectId + '.firebaseapp.com' };
+  localStorage.setItem('exec_fb_config', JSON.stringify(cfg));
+  document.getElementById('configScreen').style.display = 'none';
+  document.getElementById('loadingScreen').style.display = 'block';
+  initFirebase(cfg);
+}
+
+function initFirebase(cfg) {
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey:        cfg.apiKey       || cfg.api_key,
+        authDomain:    cfg.authDomain   || (cfg.projectId + '.firebaseapp.com'),
+        databaseURL:   cfg.databaseURL  || cfg.database_url,
+        projectId:     cfg.projectId    || cfg.project_id,
+        storageBucket: cfg.storageBucket || (cfg.projectId + '.appspot.com'),
+        appId:         cfg.appId || '',
+      });
+    }
+    db = firebase.database();
+    loadSessionData();
+  } catch(e) {
+    showError('เชื่อมต่อ Firebase ไม่ได้', 'ข้อผิดพลาด: ' + e.message);
+  }
+}
+
+// =================== Load Session ===================
+async function loadSessionData() {
+  if (!SESSION_ID) { showError('ลิงก์ไม่ถูกต้อง', 'ไม่พบ Session ID กรุณาติดต่อ HR เพื่อขอลิงก์ใหม่'); return; }
+  if (!EXEC_EMAIL) { showError('ลิงก์ไม่ถูกต้อง', 'ไม่พบข้อมูลผู้บริหาร กรุณาติดต่อ HR'); return; }
+  try {
+    // Load meta
+    const metaSnap = await db.ref(`rs_sessions/${SESSION_ID}/meta`).get();
+    if (!metaSnap.exists()) { showError('ไม่พบข้อมูล Session', 'Session ID นี้ไม่มีในระบบ หรืออาจถูกลบแล้ว'); return; }
+    sessionMeta = metaSnap.val();
+
+    // Load exec_candidates
+    const candSnap = await db.ref(`rs_sessions/${SESSION_ID}/exec_candidates`).get();
+    if (!candSnap.exists()) { showError('ยังไม่มีข้อมูลผู้สมัคร', 'HR ยังไม่ได้ส่งข้อมูลผู้สมัครเข้าระบบ'); return; }
+    const allCandidates = Object.values(candSnap.val() || {});
+
+    // Filter candidates assigned to this exec
+    candidates = allCandidates.filter(c => {
+      const execs = c.executives || [];
+      return execs.some(ex => ex.email && ex.email.toLowerCase() === EXEC_EMAIL.toLowerCase());
+    });
+
+    if (!candidates.length) {
+      showError('ไม่มีผู้สมัครที่มอบหมายให้ท่าน',
+        `ไม่พบผู้สมัครที่มอบหมายให้ ${EXEC_EMAIL}\nหากเกิดข้อผิดพลาด กรุณาติดต่อ HR`);
+      return;
+    }
+
+    // Load existing reviews for this exec
+    for (const c of candidates) {
+      const revSnap = await db.ref(`rs_sessions/${SESSION_ID}/exec_reviews/${c.id}/${emailKey}`).get();
+      if (revSnap.exists()) {
+        const revData = revSnap.val();
+        reviews[c.id] = revData;
+        if (revData.reviewStatus === 'Draft' || revData.reviewStatus === 'Submitted') {
+          draftsSaved[c.id] = true;
+        }
+      }
+    }
+
+    // Log view
+    db.ref(`rs_sessions/${SESSION_ID}/exec_views/${emailKey}`).set({
+      execEmail: EXEC_EMAIL, execName: EXEC_NAME,
+      lastViewed: new Date().toISOString(), viewCount: firebase.database.ServerValue.increment !== undefined
+        ? firebase.database.ServerValue.increment(1) : 1,
+    });
+
+    // Render UI
+    renderAll();
+
+    // Listen for real-time updates (in case HR updates candidate info)
+    db.ref(`rs_sessions/${SESSION_ID}/exec_candidates`).on('child_changed', () => {
+      // Reload on change
+      loadSessionData();
+    });
+  } catch(e) {
+    showError('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้: ' + e.message);
+  }
+}
+
+// =================== Render ===================
+function renderAll() {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('execHeader').style.display = 'block';
+  document.getElementById('submitBar').style.display = 'flex';
+
+  // Header meta
+  document.getElementById('headerMeta').textContent =
+    `💼 ${sessionMeta.jdTitle || 'ตำแหน่งงาน'}${sessionMeta.department ? ' — ' + sessionMeta.department : ''} · ผู้บริหาร: ${EXEC_NAME}`;
+
+  const listEl = document.getElementById('candidateList');
+  listEl.style.display = 'block';
+  listEl.innerHTML = candidates.map((c, i) => buildCandCard(c, i)).join('');
+
+  updateProgress();
+}
+
+function buildCandCard(c, idx) {
+  const rev = reviews[c.id] || {};
+  const status = rev.reviewStatus || 'Pending';
+  const scoreColor = c.score >= 70 ? 'score-hi' : c.score >= 40 ? 'score-md' : 'score-lo';
+  const statusCls  = status === 'Submitted' ? 'status-submitted' : status === 'Draft' ? 'status-draft' : '';
+  const pillCls    = status === 'Submitted' ? 'pill-submitted' : status === 'Draft' ? 'pill-draft' : 'pill-pending';
+  const pillTxt    = status === 'Submitted' ? '✅ ส่งแล้ว' : status === 'Draft' ? '📝 Draft' : '⏳ รอประเมิน';
+  const matched    = (c.matched || []).slice(0, 8);
+  const missing    = (c.missing || []).slice(0, 5);
+
+  const decBtns = [
+    { key:'pass',  icon:'✅', label:'อนุมัติ / ผ่าน (Approve)', desc:'ผู้สมัครมีคุณสมบัติเหมาะสม ยินดีนัดสัมภาษณ์' },
+    { key:'fail',  icon:'❌', label:'ไม่ผ่าน (Reject)', desc:'คุณสมบัติไม่ตรงตามที่ต้องการ' },
+    { key:'other', icon:'🔵', label:'ต้องการข้อมูลเพิ่มเติม', desc:'ขอข้อมูลเพิ่มก่อนตัดสินใจ' },
+  ].map(d => {
+    const active = rev.decision === d.key ? `active-${d.key}` : '';
+    const submitted = status === 'Submitted' ? 'style="pointer-events:none;opacity:0.8;"' : '';
+    return `<button class="decision-btn ${active}" onclick="setDecision('${c.id}',this,'${d.key}')" ${submitted}>
+      <span class="db-icon">${d.icon}</span>
+      <span class="db-text">
+        <span class="db-label">${d.label}</span>
+        <span class="db-desc">${d.desc}</span>
+      </span>
+    </button>`;
+  }).join('');
+
+  const submitted = status === 'Submitted';
+  const readonlyAttr = submitted ? 'readonly' : '';
+
+  return `<div class="cand-section ${statusCls}" id="cand_${c.id}">
+    <div class="cand-header">
+      <div class="cand-num">${idx + 1}</div>
+      <div class="cand-title-block">
+        <div class="cand-name">${c.name || 'ไม่ระบุชื่อ'}</div>
+        <div class="cand-sub">🎯 ${c.position || 'ไม่ระบุตำแหน่ง'}</div>
+      </div>
+      <div>
+        <div class="cand-score-badge ${scoreColor}">${c.score}%</div>
+        <div style="font-size:0.7rem;color:var(--gray-400);text-align:center;">Match</div>
+      </div>
+      <span class="status-pill ${pillCls}">${pillTxt}</span>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="info-label">ประสบการณ์</div>
+        <div class="info-value">${c.experience || '—'}</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">การศึกษา</div>
+        <div class="info-value">${c.education || '—'}</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">เงินเดือนที่ต้องการ</div>
+        <div class="info-value">${c.salary || '—'}</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">ข้อมูลติดต่อ</div>
+        <div class="info-value">${c.contact || '—'}</div>
+      </div>
+    </div>
+
+    ${matched.length ? `<div class="skills-row">
+      <div class="skills-label">✅ Skills ที่ Match (${c.matched?.length || 0} รายการ)</div>
+      <div class="tags">${matched.map(s=>`<span class="tag tag-match">${s}</span>`).join('')}
+        ${(c.matched?.length||0) > 8 ? `<span class="tag" style="background:var(--gray-100);color:var(--gray-500);">+${c.matched.length-8} อื่นๆ</span>` : ''}</div>
+    </div>` : ''}
+
+    ${missing.length ? `<div class="skills-row" style="border-top:1px solid var(--gray-100);">
+      <div class="skills-label">❌ Skills ที่ขาด (${c.missing?.length || 0} รายการ)</div>
+      <div class="tags">${missing.map(s=>`<span class="tag tag-miss">${s}</span>`).join('')}
+        ${(c.missing?.length||0) > 5 ? `<span class="tag" style="background:var(--gray-100);color:var(--gray-500);">+${c.missing.length-5} อื่นๆ</span>` : ''}</div>
+    </div>` : ''}
+
+    ${c.hrComment ? `<div class="hr-notes-row">
+      <div class="hr-notes-label">📋 ความเห็น HR</div>
+      <div class="hr-notes-text">${c.hrComment}</div>
+    </div>` : ''}
+
+    <div class="eval-form">
+      <div class="eval-title">🗳 ผลการพิจารณาของท่าน</div>
+      <div class="decision-btns" id="decBtns_${c.id}">${decBtns}</div>
+      <div class="eval-grid">
+        <div class="eval-field">
+          <label>💰 เสนอเงินเดือน (ถ้าผ่าน)</label>
+          <input type="text" id="salary_${c.id}" placeholder="เช่น 55,000 บาท"
+            value="${rev.salary||''}" oninput="onFieldInput('${c.id}')" ${readonlyAttr} />
+        </div>
+        <div class="eval-field">
+          <label>⭐ ระดับความเหมาะสม (1-10)</label>
+          <input type="text" id="rating_${c.id}" placeholder="เช่น 8"
+            value="${rev.rating||''}" oninput="onFieldInput('${c.id}')" ${readonlyAttr} />
+        </div>
+      </div>
+      <div class="eval-field">
+        <label>💬 Feedback / ความเห็นเพิ่มเติม</label>
+        <textarea id="feedback_${c.id}" placeholder="ระบุความเห็นของท่านเกี่ยวกับผู้สมัครท่านนี้..."
+          oninput="onFieldInput('${c.id}')" ${readonlyAttr}>${rev.feedback||''}</textarea>
+      </div>
+      <div class="eval-field">
+        <label>📝 คำแนะนำ / สิ่งที่ต้องการทราบเพิ่มเติม</label>
+        <textarea id="recommendation_${c.id}" placeholder="เช่น ต้องการทดสอบ Technical, ขอดูผลงาน Portfolio..."
+          oninput="onFieldInput('${c.id}')" ${readonlyAttr}>${rev.recommendation||''}</textarea>
+      </div>
+    </div>
+
+    <div class="cand-footer">
+      <div style="font-size:0.78rem;color:var(--gray-400);">
+        ${rev.reviewedAt ? '🕐 อัปเดตล่าสุด: ' + new Date(rev.reviewedAt).toLocaleString('th-TH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${!submitted ? `
+          <button class="btn btn-secondary" onclick="saveDraft('${c.id}')">💾 บันทึก Draft</button>
+          <button class="btn btn-success" onclick="submitSingle('${c.id}')">✅ ยืนยันผลนี้</button>
+        ` : `<span style="color:#15803d;font-weight:700;font-size:0.875rem;">✅ ยืนยันแล้ว</span>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+// =================== Review Actions ===================
+function setDecision(candId, btn, decision) {
+  if (!reviews[candId]) reviews[candId] = {};
+  reviews[candId].decision = decision;
+  // Update button UI
+  const container = document.getElementById('decBtns_' + candId);
+  if (container) {
+    container.querySelectorAll('.decision-btn').forEach(b => {
+      b.classList.remove('active-pass', 'active-fail', 'active-more');
+    });
+    btn.classList.add('active-' + decision);
+  }
+  markUnsaved(candId);
+}
+
+function onFieldInput(candId) {
+  if (!reviews[candId]) reviews[candId] = {};
+  reviews[candId].feedback       = document.getElementById('feedback_' + candId)?.value || '';
+  reviews[candId].salary         = document.getElementById('salary_' + candId)?.value || '';
+  reviews[candId].rating         = document.getElementById('rating_' + candId)?.value || '';
+  reviews[candId].recommendation = document.getElementById('recommendation_' + candId)?.value || '';
+  markUnsaved(candId);
+}
+
+function markUnsaved(candId) {
+  draftsSaved[candId] = false;
+  updateProgress();
+}
+
+async function saveDraft(candId) {
+  if (!reviews[candId]) reviews[candId] = {};
+  const rev = {
+    ...reviews[candId],
+    reviewStatus: 'Draft',
+    reviewedAt:   new Date().toISOString(),
+    execName:     EXEC_NAME,
+    execEmail:    EXEC_EMAIL,
+  };
+  reviews[candId] = rev;
+  try {
+    await db.ref(`rs_sessions/${SESSION_ID}/exec_reviews/${candId}/${emailKey}`).set(rev);
+    draftsSaved[candId] = true;
+    showToast('💾 บันทึก Draft แล้ว');
+    refreshCandStatus(candId, 'Draft');
+    updateProgress();
+  } catch(e) { showToast('❌ บันทึกไม่สำเร็จ: ' + e.message); }
+}
+
+async function submitSingle(candId) {
+  const rev = reviews[candId] || {};
+  if (!rev.decision) { showToast('⚠️ กรุณาเลือก Approve / Reject / Need More Info ก่อน'); return; }
+  const data = {
+    ...rev,
+    reviewStatus: 'Submitted',
+    reviewedAt:   new Date().toISOString(),
+    execName:     EXEC_NAME,
+    execEmail:    EXEC_EMAIL,
+  };
+  reviews[candId] = data;
+  try {
+    await db.ref(`rs_sessions/${SESSION_ID}/exec_reviews/${candId}/${emailKey}`).set(data);
+    draftsSaved[candId] = true;
+    showToast('✅ ยืนยันผลการประเมินแล้ว');
+    refreshCandStatus(candId, 'Submitted');
+    updateProgress();
+  } catch(e) { showToast('❌ ส่งไม่สำเร็จ: ' + e.message); }
+}
+
+async function submitAllReviews() {
+  // Check all have decisions
+  const missing = candidates.filter(c => !(reviews[c.id]?.decision));
+  if (missing.length) {
+    showToast(`⚠️ ยังมี ${missing.length} คนที่ยังไม่ได้เลือกผล กรุณาประเมินให้ครบ`);
+    // Scroll to first missing
+    const el = document.getElementById('cand_' + missing[0].id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  // Submit all
+  const btn = document.getElementById('submitAllBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '🔄 กำลังส่ง...'; }
+  let success = true;
+  for (const c of candidates) {
+    const data = {
+      ...(reviews[c.id] || {}),
+      reviewStatus: 'Submitted',
+      reviewedAt:   new Date().toISOString(),
+      execName:     EXEC_NAME,
+      execEmail:    EXEC_EMAIL,
+    };
+    reviews[c.id] = data;
+    try {
+      await db.ref(`rs_sessions/${SESSION_ID}/exec_reviews/${c.id}/${emailKey}`).set(data);
+      draftsSaved[c.id] = true;
+    } catch(e) { success = false; showToast('❌ บางรายการส่งไม่ได้: ' + e.message); }
+  }
+  if (success) {
+    // Log completion
+    db.ref(`rs_sessions/${SESSION_ID}/exec_views/${emailKey}/completedAt`).set(new Date().toISOString());
+    document.getElementById('doneMsg').textContent =
+      `ขอบคุณ คุณ${EXEC_NAME} ที่ประเมินผู้สมัคร ${candidates.length} คน\nผลการประเมินส่งถึง HR ผ่าน Real-time Database แล้ว`;
+    document.getElementById('doneScreen').classList.add('show');
+  }
+}
+
+function refreshCandStatus(candId, status) {
+  const sec = document.getElementById('cand_' + candId);
+  if (!sec) return;
+  sec.className = `cand-section ${status === 'Submitted' ? 'status-submitted' : status === 'Draft' ? 'status-draft' : ''}`;
+  const pillEl = sec.querySelector('.status-pill');
+  if (pillEl) {
+    pillEl.className = `status-pill ${status === 'Submitted' ? 'pill-submitted' : status === 'Draft' ? 'pill-draft' : 'pill-pending'}`;
+    pillEl.textContent = status === 'Submitted' ? '✅ ส่งแล้ว' : status === 'Draft' ? '📝 Draft' : '⏳ รอประเมิน';
+  }
+}
+
+function updateProgress() {
+  const total     = candidates.length;
+  const submitted = candidates.filter(c => reviews[c.id]?.reviewStatus === 'Submitted').length;
+  const drafted   = candidates.filter(c => reviews[c.id]?.reviewStatus === 'Draft').length;
+  const decided   = candidates.filter(c => reviews[c.id]?.decision).length;
+
+  document.getElementById('progressText').textContent = `${submitted}/${total} ส่งแล้ว`;
+
+  const dotsEl = document.getElementById('submitBarDots');
+  if (dotsEl) {
+    dotsEl.innerHTML = candidates.map(c => {
+      const rev = reviews[c.id];
+      const cls = rev?.reviewStatus === 'Submitted' ? 'done' : rev?.reviewStatus === 'Draft' ? 'draft' : '';
+      return `<div class="sbp-dot ${cls}" title="${c.name||''}"></div>`;
+    }).join('');
+  }
+
+  const titleEl  = document.getElementById('submitBarTitle');
+  const subEl    = document.getElementById('submitBarSub');
+  const submitBtn = document.getElementById('submitAllBtn');
+  if (submitted === total) {
+    if (titleEl) titleEl.textContent = '✅ ประเมินครบทุกคนแล้ว';
+    if (subEl)   subEl.textContent   = 'กดส่งผลการประเมินทั้งหมด';
+    if (submitBtn) submitBtn.disabled = false;
+  } else {
+    if (titleEl) titleEl.textContent = `ประเมินแล้ว ${submitted}/${total} คน`;
+    if (subEl)   subEl.textContent   = decided < total ? `กรุณาเลือกผล (Approve/Reject) ให้ครบทุกคน` : 'กด "ยืนยันผลนี้" ทีละคน หรือกด "ส่งทั้งหมด"';
+    if (submitBtn) submitBtn.disabled = (decided < total);
+  }
+}
+
+// =================== UI Helpers ===================
+function showError(title, msg) {
+  document.getElementById('loadingScreen').style.display = 'none';
+  const err = document.getElementById('errorScreen');
+  err.style.display = 'block';
+  document.getElementById('errorTitle').textContent = title;
+  document.getElementById('errorMsg').textContent   = msg;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
